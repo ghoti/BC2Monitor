@@ -1,0 +1,4 @@
+\'$victag $vicname streak of $streak kills was blown away by $killertag $killername\'
+\'$victag $vicname streak of $streak kills didnt have a chance against $killertag $killername!\'
+\'$victag $vicname had a good run of $streak kills, but $killertag $killername has had enough of it!\'
+\'Lookout $victag $vicname, your streak of $streak was no match for $killertag $killername!\'

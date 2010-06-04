@@ -1,0 +1,6 @@
+'\$tag $name is on FIRE with $streak kills since their last death\'
+\'$tag $name is on FIRE with $streak kills since their last death!\'
+\'$tag $name is on a RAMPAGE with a $streak killing spree!\'
+\'No one can stop $tag $name with their $streak kill streak!\'
+\'$tag $name takes another one down with $streak kills in a ROW!\'
+\'$tag $name is taking names with their $streak kill streak!\'

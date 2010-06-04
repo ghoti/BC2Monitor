@@ -1,0 +1,854 @@
+#!/usr/bin/env python
+
+import ConfigParser
+import datetime
+import json
+import linecache
+import logging
+import operator
+import os
+import Queue
+import random                                                                                           
+import re
+import sqlalchemy
+import string
+import sys
+import time
+import threading
+import urllib
+
+import clients
+import rcon
+
+import bottle
+
+class monitor3(object):
+    def __init__(self):
+        #are we running? hah!
+        self.running = True
+        #set up the loggers
+        self.logger = logging.getLogger('chatlog')
+        self.logger.setLevel(logging.INFO)
+        ch = logging.FileHandler('chatlog.txt')
+        ch.setLevel(logging.INFO)
+        formatter = logging.Formatter("%(asctime)s - %(message)s")
+        ch.setFormatter(formatter)
+        self.logger.addHandler(ch)
+        self.log = logging.getLogger('gamelog')
+        self.log.setLevel(logging.INFO)
+        ch = logging.FileHandler('logfile.txt')
+        ch.setLevel(logging.INFO)
+        formatter = logging.Formatter(None)
+        ch.setFormatter(formatter)
+        self.log.addHandler(ch)
+
+        #read config options
+        config = ConfigParser.ConfigParser()
+        config.readfp(open(os.path.abspath('.') + '//config.cfg'))
+        self.host = config.get('server', 'ip')
+        self.port = int(config.get('server', 'port'))
+        self.pw = config.get('server', 'pass')
+        self.dbhost = config.get('mysql', 'host')
+        self.dbuser = config.get('mysql', 'user')
+        self.dbpasswd = config.get('mysql', 'passwd')
+        self.dbname = config.get('mysql', 'db')
+
+        self.PBMessages = (
+            (re.compile(r'^PunkBuster Server: Running PB Scheduled Task \(slot #(?P<slot>\d+)\)\s+(?P<task>.*)$'), 'PBScheduledTask'),
+            (re.compile(r'^PunkBuster Server: Lost Connection \(slot #(?P<slot>\d+)\) (?P<ip>[^:]+):(?P<port>\d+) (?P<pbuid>[^\s]+)\(-\)\s(?P<name>.+)$'), 'PBLostConnection'),
+            (re.compile(r'^PunkBuster Server: Master Query Sent to \((?P<pbmaster>[^\s]+)\) (?P<ip>[^:]+)$'), 'PBMasterQuerySent'),
+            (re.compile(r'^PunkBuster Server: Player GUID Computed (?P<pbid>[0-9a-fA-F]+)\(-\) \(slot #(?P<slot>\d+)\) (?P<ip>[^:]+):(?P<port>\d+)\s(?P<name>.+)$'), 'PBPlayerGuid'),
+            (re.compile(r'^PunkBuster Server: New Connection \(slot #(?P<slot>\d+)\) (?P<ip>[^:]+):(?P<port>\d+) \[(?P<something>[^\s]+)\]\s"(?P<name>.+)".*$'), 'PBNewConnection')
+            )
+
+        self.mapnames = ['Panama Canal', 'Valparaiso', 'Laguna Alta', 'Isla Inocentes', 'Atacama Desert', 'Africa Harbor',
+                    'White Pass', 'Nelson Bay', 'Laguna Presa', 'Port Valdez']
+        
+        self.ALLmaps = {'Panama Canal':'MP_001', 'Valparioso':'MP_002', 'Laguna Alta':'MP_003', 'Isla Inocentes':'MP_004',
+               'Atacama Desert':'MP_005', 'Africa Harbor':'MP_006', 'White Pass':'MP_007', 'Nelson Bay':'MP_008',
+               'Laguna Presa':'MP_009', 'Port Valdez':'MP_012'}
+        self.CONQUEST = {'Panama Canal':'MP_003', 'Atacama Desert':'MP_005', 'Africa Harbor':'MP_006CQ',
+                        'White Pass':'MP_007', 'Laguna Presa':'MP_009CQ'}
+        self.RUSH = {'Valparaiso':'MP_002', 'Isla Inocentes':'MP_004', 'Neslon Bay':'MP_008', 'Port Valdez':'MP_012GR',
+                   'Laguna Presa':'MP_009GR'}
+        self.SQDM = {'Isla Inocentes':'MP_004SDM', 'Africa Harbor':'MP_006SDM', 'White Pass':'MP_007SDM', 'Laguna Presa':'MP_009SDM'}
+        self.SQRUSH = {'Panama Canal':'MP_001SR', 'Valparaiso':'MP_002SR', 'Atacama Desert':'MP_005SR', 'Port Valdez':'MP_012SR'}
+
+        self.players = clients.clients()
+        self.queue = Queue.Queue()
+        self.chat = []
+        self.kills = []
+        self.map = None
+        self.round = ['0', '0']
+        self.pcount = 0
+        self.gametype = None
+        self.rc = rcon.RCon()
+        self.eventmon = rcon.RCon()
+
+        self.badwords = []
+        f = open('badwords.txt', 'r')
+        for line in f:
+            if line:
+                self.badwords.append(line.strip('\n'))
+        f.close()
+        
+        self.banwords = []
+        f = open('banlist.txt', 'r')
+        for line in f:
+            if line:
+                self.badwords.append(line.strip('\n'))
+        f.close()
+        
+        eq = threading.Thread(target=self.event_queue)
+        eq.name = 'events'
+        eq.start()
+        self.do_first_run()
+        threading.Thread(target=self.status).start()
+        self.main_loop()
+
+    def main_loop(self):
+        while self.running:
+            if self.eventmon.serverSocket is None:
+                try:
+                    self.eventmon.connect(self.host, self.port, self.pw)
+                    self.eventmon.serverSocket.send(self.eventmon.EncodeClientRequest(["eventsEnabled", "true"]))
+                    self.eventmon.serverSocket.settimeout(90)
+                except rcon.socket.error:
+                    time.sleep(10)
+                    continue
+            if self.rc.serverSocket is None:
+                try:
+                    self.rc.connect(self.host, self.port, self.pw)
+                    self.rc.serverSocket.settimeout(90)
+                except rcon.socket.error:
+                    time.sleep(10)
+                    continue
+
+            words = None
+            while self.running:
+                try:
+                    event, self.eventmon.receiveBuffer = self.eventmon.receivePacket(self.eventmon.serverSocket,
+                                                                                        self.eventmon.receiveBuffer)
+                    [isFromServer, isResponse, sequence, words] = self.eventmon.DecodePacket(event)
+
+                    if words[0] == "OK":
+                        continue
+                    self.queue.put(words)
+
+                except rcon.socket.timeout:
+                    time.sleep(10)
+                    self.rc.close()
+                    self.eventmon.serverSocket.close()
+                    break
+                except rcon.socket.error:
+                    time.sleep(30)
+                    self.rc.close()
+                    self.eventmon.close()
+                    break
+                except Exception, detail:
+                    print 'CRASH:', detail
+                    time.sleep(15)
+                    self.rc.close()
+                    self.eventmon.close()
+                    break
+                except KeyboardInterrupt:
+                    print 'Keyboard interrupt caught, exiting...'
+                    self.running = False
+                    for t in threading.enumerate():
+                        t.is_alive = False
+                    sys.exit(0)
+        sys.exit(0)
+
+    def event_queue(self):
+        while self.running:
+            if not self.queue.empty():
+                func = None
+                task = self.queue.get()
+                match = re.search(r"^(?P<actor>[^.]+)\.on(?P<event>.+)$", task[0])
+                if match:
+                    func = '%s%s' % (string.capitalize(match.group('actor')), \
+                               string.capitalize(match.group('event')))
+                if match and hasattr(self, func):
+                    try:
+                        getattr(self, func)(task[1:])
+                    except:
+                        raise
+                else:
+                    print "TODO:", func, task[1:]
+                self.queue.task_done()
+            time.sleep(.01)
+
+    def ServerLoadinglevel(self, data):
+        self.map = data[0].strip('Levels/')
+        self.round[0] = data[1]
+        self.round[1] = data[2]
+        self.chat_queue('Map changed to: %s - Round %s of %s' % (self.map_name(self.map), data[1], data[2]))
+
+    def ServerLevelstarted(self, data):
+        pass
+    
+    def PlayerKicked(self, data):
+        self.chat_queue(data[1])
+        self.logger.info(data[1])
+        
+    def PlayerLeave(self, data):
+        try:
+            self.players.disconnect(data[0])
+            self.pcount -= 1
+        except KeyError:
+            pass
+        self.log.info('%s;onLeave;%s' % (str(datetime.date.today()), data[0]))
+
+    def PlayerAuthenticated(self, data):
+        try:
+            player = self.players.getPlayer(data[0])
+        except KeyError:
+            return
+        player.eaguid = data[1]
+
+    def PlayerSquadchange(self, data):
+        self.PlayerTeamchange(data)
+
+    def PlayerTeamchange(self, data):
+        try:
+            player = self.players.getPlayer(data[0])
+        except KeyError:
+            return
+        player.team = data[1]
+        player.squad = data[2]
+
+    def PunkbusterMessage(self, data):
+        for regex, name in self.PBMessages:
+            match = re.match(regex, str(data[0]).strip())
+            if match:
+                if match and hasattr(self, name):
+                    getattr(self, name)(match)
+                    return
+                else:
+                    print 'todo:', data
+
+    def PBLostConnection(self, match):
+        try:
+            player = self.players.getPlayer(match.group('name'))
+            #self.write_to_DB(player)
+            self.players.disconnect(player.name)
+            self.pcount -= 1
+        except KeyError:
+            pass
+
+    def PBPlayerGuid(self, match):
+        player = self.players.getPlayer(match.group('name'))
+        player.pbid = match.group('pbid')
+
+    def PBNewConnection(self, match):
+        try:
+            player = self.players.getPlayer(match.group('name'))
+            player.seen = self.has_been_seen(player)
+        #no onJoin event?
+        except KeyError:
+            self.players.connect('', match.group('name'), 0)
+            threading.Timer(60.0, self.new_player, args=[self.players.getPlayer(match.group('name'))]).start()
+            player = self.players.getPlayer(match.group('name'))
+            player.seen = self.has_been_seen(player)
+        finally:
+            player.ip = match.group('ip')
+            player.pbslot = match.group('slot')
+            self.pcount += 1
+
+    #every 60 seconds an automated server message appears, so we will use an already existing timer to regulate our
+    #hammering the server for player count verification.  hacky?  yes.  Awesome?  you betcha
+    def PBScheduledTask(self, match):
+        data, response = self.rc.sndcmd(self.rc.PINFO, 'all')
+        if response:
+            #self.pcount = int(data[11])
+            if self.pcount != int(data[11]):
+                self.pcount = int(data[11])
+                for p in self.players.getAll():
+                    if not data.count(p.name):
+                        for i in threading._enumerate():
+                            if i.name == p.name:
+                                return
+                        self.write_to_DB(p)
+                        self.players.disconnect(p.name)
+        #print 'players dict:', len(self.players)
+
+    #same as above, but for the gametype
+    def PBMasterQuerySent(self, match):
+        data, response = self.rc.sndcmd(self.rc.SINFO)
+        if response:
+            self.gametype = data[4]
+
+    def PlayerJoin(self, data):
+        if data:
+            self.players.connect('', data[0], 0)
+            newp = threading.Timer(60.0, self.new_player, args=[self.players.getPlayer(data[0])])
+            newp.name = self.players.getPlayer(data[0]).name
+            newp.start()
+            self.pcount += 1
+            self.log.info('%s;onJoin;%s' % (str(datetime.date.today()), data[0]))
+
+    def PlayerKill(self, data):
+        attacker = self.players.getPlayer(data[0])
+        victim = self.players.getPlayer(data[1])
+
+        self.kill_queue(attacker, victim)
+
+        if attacker.name != victim.name:
+            if attacker.team == victim.team:
+                attacker.teamkill()
+            else:
+                attacker.kill()
+                if not attacker.streak % 10:
+                    streak = string.Template(linecache.getline('streak.txt', random.randint(1,5)))
+                    streak = streak.substitute(tag=attacker.tag, name=attacker.name, streak=str(attacker.streak)).strip('\n') +  ' all'
+                    self.rc.sndcmd(self.rc.SAY, streak)
+                    #self.rc.sndcmd(self.rc.SAY, '\'%s %s is on FIRE with %i kills since their last death!\' all'
+                    #    (attacker.tags, attacker.name, attacker.kills))
+        if victim.streak >= 10:
+            streak = string.Template(linecache.getline('streakend.txt', random.randint(1,4)))
+            streak = streak.substitute(victag=victim.tag, vicname=victim.name, streak=str(victim.streak), killertag=attacker.tag, killername=attacker.name).strip('\n') + ' all'
+            self.rc.sndcmd(self.rc.SAY, streak)
+        victim.death()
+        self.log.info('%s;onKill;%s;%s' % (str(datetime.date.today()), attacker.name, victim.name))
+
+    def search_player(self, player, search):
+        plist = []
+        for p in self.players.getAll():
+            if re.search(search, p.name, re.I):
+                plist.append(p)
+        if len(plist) != 1:
+            self.rc.sndcmd(self.rc.SAY, '\'Ambiguous player defined or player not found, try being more specific...\' player \'%s\'' %
+                player.name)
+            return None
+        else:
+            return plist[0]
+
+    def PlayerChat(self, data):
+        if data and not data[0] == 'Server':
+            #fix the random empty line of doom?  hacky, for sure!
+            if not data[0] or not data[1] or not data[2]:
+                return
+            player = self.players.getPlayer(data[0])
+            chat = data[1]
+            who = data[2]
+
+            if chat.startswith('/'):
+                chat = chat[1:]
+            if not chat:
+                return
+            self.chat_queue(player.name + ': ' + who + ': ' + chat)
+            self.logger.info(player.name + ': ' + who + ': ' + chat)
+
+            for word in self.badwords:
+                if re.search(word, chat, re.I):
+                    if player.warning:
+                        self.rc.sndcmd(self.rc.KICK, '"%s" "10" "That language is not acceptable here."\'' % player.name)
+                        break
+                    else:
+                        self.rc.sndcmd(self.rc.SAY, '\'%s: THAT LANGUAGE WILL NOT BE TOLERATED HERE.  THIS IS YOUR ONLY WARNING!!!\' \
+                                        player \"%s\"' % (player.name, player.name))
+                        player.warning = 1
+                        self.chat_queue('Player %s was warned for bad language' % player.name)
+                        self.logger.info('Player %s was warned for bad language' % player.name)
+                        break
+            for word in self.banwords:
+                if re.search(word, chat, re.I):
+                    if player.pbid:
+                        if player.ip:
+                            self.rc.sndcmd(self.rc.BAN, '\"%s\" \"%s\" \"%s\" \"We do not tolerate that language here\""' % (player.pbid, player.name, player.ip))
+                            break
+                        else:
+                            self.rc.sndcmd(self.rc.BAN, '"%s" "%s" "???" "We do not tolerate that language here"' % (player.pbid, player.name))
+                            break
+            
+            if re.search('!stats', chat, re.I):
+                if player.deaths == 0:
+                    statline = '\'%s %s: %i kills and 0 deaths for a ratio of %.2f\'' % \
+                        (player.tag, player.name, player.kills, float(player.kills))
+                    #self.rc.sndcmd(self.rc.SAY, '\'%s %s: %i kills and 0 deaths for a ratio of %.2f\' all' %
+                    #    (player.tag, player.name, player.kills, float(player.kills)))
+                else:
+                    statline = '\'%s %s: %i kills and %i deaths for a ratio of %.2f\'' % \
+                        (player.tag, player.name, player.kills, player.deaths, float(player.kills)/float(player.deaths))
+                    #self.rc.sndcmd(self.rc.SAY, '\'%s %s: %i kills and %i deaths for a ratio of %.2f\' all' %
+                    #    (player.tag, player.name, player.kills, player.deaths, float(player.kills)/float(player.deaths)))
+                self.rc.sndcmd(self.rc.SAY, statline + ' all')
+                self.chat_queue(statline)
+
+            elif re.search('!chuck', chat, re.I):
+                fact = ''
+                while True:
+                    #strip out any apostrophe's cuz the rcon doesn't like em :(
+                    fact = linecache.getline('chuck.txt', random.randint(1, 76)).replace('\"', '').replace("\'", '')
+                    if len(fact) <= 100:
+                        break
+                self.rc.sndcmd(self.rc.SAY, '\'' + fact + '\' all')
+                self.chat_queue('Server: ' + fact)
+
+            elif re.search('!punish', chat, re.I) and player.power >= player.RECRUIT:
+                command = re.compile(r'^(?P<cid>\'[^\']{2,}\'|[0-9]+|[^\s]{2,}|@[0-9]+)\s?(?P<parms>.*)$')
+                m = re.match(command, chat)
+                punish = self.search_player(player, m.group('parms').split()[0])
+                if punish:
+                    self.rc.sndcmd(self.rc.YELL, '\'You are being punished by a JHF admin for misbehaving.There will be no more warnings!!!\' 6000 player \'%s\'' % punish.name)
+                    time.sleep(2)
+                    self.rc.sndcmd(self.rc.PUNISH, punish.name)
+                    
+            elif re.search('!kick', chat, re.I) and player.power >= player.ADMIN:
+                command = re.compile(r'^(?P<cid>\'[^\']{2,}\'|[0-9]+|[^\s]{2,}|@[0-9]+)\s?(?P<parms>.*)$')
+                m = re.match(command, chat)
+                parms = m.group('parms').split()
+                if len(parms) == 1:
+                    reason = 'ADMIN DECISION'
+                    ktime = '5'
+                elif len(parms) == 2:
+                    reason = 'ADMIN DECISION'
+                    ktime = parms[1]
+                else:
+                    reason = ''
+                    for part in parms[2:]:
+                        reason = reason + part + ' '
+                    reason = reason.strip()
+                    ktime = parms[1]
+                kick = self.search_player(player, parms[0])
+                if kick:
+                    self.rc.sndcmd(self.rc.KICK, '\"%s\" \"%s\" \"%s\"\'' % (kick.name, ktime, reason))
+
+            elif re.search('!ban', chat, re.I) and player.power >= player.SUPER:
+                command = re.compile(r'^(?P<cid>\'[^\']{2,}\'|[0-9]+|[^\s]{2,}|@[0-9]+)\s?(?P<parms>.*)$')
+                m = re.match(command, chat)
+                parms = m.group('parms').split()
+                if len(parms) > 1:
+                    r = parms[1:]
+                    reason = ''
+                    for part in r:
+                        reason = reason + part + ' '
+                    reason = reason.strip()
+                    ban = self.search_player(player, parms[0])
+                    if ban:
+                        if ban.pbid:
+                            if ban.ip:
+                                self.rc.sndcmd(self.rc.BAN, '\"%s\" \"%s\" \"%s\" \"%s\""' % (ban.pbid, ban.name, ban.ip, reason))
+                            else:
+                                self.rc.sndcmd(self.rc.BAN, '%s %s ??? %s"' % (ban.pbid, ban.name, reason))
+                else:
+                    self.rc.sndcmd(self.rc.SAY, '\'A reason is required to BAN a player\' player \'%s\'' %
+                        player.name)
+            elif re.search('!restart', chat, re.I) and player.power >= player.MOD:
+                self.rc.sndcmd(self.rc.RESTART)
+
+            elif re.search('!map', chat, re.I) and player.power >= player.RECRUIT:
+                command = re.compile(r'^(?P<cid>\'[^\']{2,}\'|[0-9]+|[^\s]{2,}|@[0-9]+)\s?(?P<parms>.*)$')
+                m = re.match(command, chat)
+                self.map_name_easy(player, m.group('parms'))
+            
+            elif re.search('!gametype', chat, re.I) and player.power >= player.MOD:
+                command = re.compile(r'^(?P<cid>\'[^\']{2,}\'|[0-9]+|[^\s]{2,}|@[0-9]+)\s?(?P<parms>.*)$')
+                m = re.match(command, chat)
+                if m.group('parms').lower().count('rush'):
+                    self.rc.sndcmd(self.rc.SETGAMETYPE, 'RUSH')
+                    time.sleep(.01)
+                    for map in self.RUSH.values():
+                        self.rc.sndcmd(self.rc.ADDMAP, 'Levels/%s' % map)
+                        time.sleep(.01)
+                    self.rc.sndcmd(self.rc.ROTATE)
+                elif m.group('parms').lower().count('conquest'):
+                    self.rc.sndcmd(self.rc.SETGAMETYPE, 'CONQUEST')
+                    time.sleep(.01)
+                    for map in self.CONQUEST.values():
+                        self.rc.sndcmd(self.rc.ADDMAP, 'Levels/%s' % map)
+                        time.sleep(.01)
+                    self.rc.sndcmd(self.rc.ROTATE)
+
+            self.log.info('%s;onChat;%s;%s' % (str(datetime.date.today()), player.name, chat))
+
+    def handle_command(self, player, chat):
+        pass
+                
+#        elif m and m.group('cid').lower() == '!ff' and player.power:
+#            data, response = self.rc.sndcmd(self.rc.FF)
+#            if response:
+#                if data[1] == 'true':
+#                    self.rc.sndcmd(self.rc.FF, 'false')
+#                    self.rc.sndcmd(self.rc.SAY, '\'!!!Friendly Fire will be OFF after the current round!!!\' all')
+#                else:
+#                    self.rc.sndcmd(self.rc.FF, 'true')
+#                    for i in xrange(0,3):
+#                        self.rc.sndcmd(self.rc.SAY, '\'!!!Friendly Fire will be ON after the current round!!!  Watch your fire!!!\' all')
+#                        time.sleep(3)
+
+                    
+
+
+    def write_to_DB(self, play):
+        try:
+            sql = sqlalchemy.create_engine("mysql://%s:%s@%s/%s" % (self.dbuser, self.dbpasswd, self.dbhost, self.dbname),
+                                pool_size = 5, pool_recycle=45).connect()
+            dbplayers = sqlalchemy.Table('player_info', sqlalchemy.MetaData(sql), autoload=True)
+            today = time.strftime('%m/%d/%Y', time.localtime())
+            if self.has_been_seen(play):
+                current = dbplayers.select(dbplayers.c.player_name == play.name).execute()
+                current = current.fetchone()
+                timesSeen = int(current['times_seen']) + 1
+                if current['last_seen'] == today:
+                    dbplayers.update(dbplayers.c.player_name == play.name).execute(clan_tag = play.tag, ip=play.ip,
+                                                                                   guid=play.pbid, times_seen=timesSeen)
+                else:
+                    dbplayers.update(dbplayers.c.player_name == play.name).execute(clan_tag=play.tag, ip=play.ip,
+                                                                    guid=play.pbid, times_seen=timesSeen, last_seen=today)
+            else:
+                dbplayers.insert().execute(player_name=play.name, clan_tag=play.tag, ip=play.ip, guid=play.pbid,
+                                           times_seen=1, first_seen=today, last_seen=today)
+        except:
+            pass
+        finally:
+            sql.close()
+
+    def has_been_seen(self, player):
+        try:
+            sql = sqlalchemy.create_engine("mysql://%s:%s@%s/%s" % (self.dbuser, self.dbpasswd, self.dbhost, self.dbname),
+                pool_size = 5, pool_recycle=45).connect()
+            dbplayers = sqlalchemy.Table('player_info', sqlalchemy.MetaData(sql), autoload=True)
+            p = dbplayers.select(dbplayers.c.player_name == player.name).execute()
+            if p.fetchone():
+                return True
+            else:
+                return False
+        except:
+            pass
+        finally:
+            sql.close()
+
+    def get_rank(self,player):
+        while self.running:
+            if not self.players.has_key(player.name):
+                return
+            try:
+                url = 'http://api.bfbcs.com/api/pc?players=%s&fields=general' % player.name
+                webFile = urllib.urlopen(url)
+                rank = webFile.read()
+                data = json.loads(rank)
+                player.rank = str(data['players'][0]['rank'])
+                return
+            except Exception:
+                #got to sleep, sometimes the player doesn't exist with this api yet, and we need time to let it update
+                time.sleep(60)
+
+            
+    def new_player(self, player):
+        try:
+            np = rcon.RCon()
+            np.connect(self.host, self.port, self.pw)
+            data, response = np.sndcmd(np.PINFO, 'player \'%s\'' % player.name)
+            if response and data[11]:
+                player.tag = data[12]
+                player.eaguid = data[14]
+                player.team = data[15]
+                player.squad = data[16]
+                player.kills += int(data[17])
+                player.deaths += int(data[18])
+            if player.seen:
+                np.sndcmd(np.YELL, "'Welcome back to JHF, %s %s! Be sure to visit jhfgames.com and get to know us!' \
+                    6000 player '%s'" % (player.tag, player.name, player.name))
+            else:
+                np.sndcmd(np.YELL, "'Welcome to JHF, %s %s! Play fair, Have fun and visit us at jhfgames.com sometime!' \
+                    6000 player '%s'" % (player.tag, player.name, player.name))
+            time.sleep(10)
+            if player.power:
+                np.sndcmd(np.SAY, "'%s %s, you have FULL admin rights on the server' player '%s'" % (player.tag, player.name, player.name))
+            self.get_rank(player)
+            self.write_to_DB(player)
+        except KeyError:
+            pass
+        except IndexError:
+            pass
+        except rcon.socket.error:
+            pass
+        except:
+            raise
+
+    def chat_queue(self, chat):
+        if chat:
+            if len(self.chat) >= 20:
+                self.chat.pop(0)
+            self.chat.append('%s - %s' % (time.strftime("%m/%d %H:%M:%S", time.localtime()), chat))
+
+    def kill_queue(self, attacker, victim):
+        if len(self.kills) >= 10:
+            self.kills.pop(0)
+        if attacker.name == victim.name:
+            self.kills.append('%s commited suicide' % attacker.name)
+        elif attacker.team == victim.team:
+            self.kills.append('%s teamkilled %s' % (attacker.name, victim.name))
+        else:
+            self.kills.append('%s killed %s' % (attacker.name, victim.name))
+
+    def do_first_run(self):
+        '''
+        Some initial recording of what's going on in the server
+        '''
+        rc = rcon.RCon()
+        rc.connect(self.host, self.port, self.pw)
+        data, response = rc.sndcmd(rc.PINFO, 'all')
+        if response and len(data) > 1:
+            data = data[12:]
+            while data:
+                tag = data.pop(0)
+                name = data.pop(0)
+                guid = data.pop(0)
+                team = data.pop(0)
+                squad = data.pop(0)
+                kills = data.pop(0)
+                deaths = data.pop(0)
+                data.pop(0)
+                #score = data.pop(0)
+                data.pop(0)
+                #ping = data.pop(0)
+                self.players.connect(tag, name, team)
+                self.players.getPlayer(name).kills = int(kills)
+                self.players.getPlayer(name).deaths = int(deaths)
+                self.players.getPlayer(name).eaguid = guid
+                self.players.getPlayer(name).squad = squad
+                threading.Thread(target=self.get_rank, args=[self.players.getPlayer(name)]).start()
+        data, response = rc.sndcmd(rc.SINFO)
+        if response and len(data) == 8:
+            self.pcount = int(data[2])
+            self.map = data[5].strip('Levels/')
+            self.round[0] = data[6]
+            self.round[1] = data[7]
+            self.gametype = data[4].lower()
+        rc.serverSocket.close()
+        self.chat_queue('Monitor is alive!')
+
+    def map_name(self, map):
+        for i, j in self.ALLmaps.items():
+            if map.count(j):
+                return i
+        return map
+
+    def map_name_easy(self, player, map):
+        for i, j in self.ALLmaps.items():
+            if re.search(map.lower(), i.lower()):
+                data, response = self.rc.sndcmd(self.rc.GAMETYPE)
+                if response:
+                    if i in eval('self.' + data[1]):
+                        list, res = self.rc.sndcmd(self.rc.MAPLIST)
+                        list.pop(0)
+                        print list,
+                        index = 0
+                        if res:
+                            while index < len(list):
+                                if list[index].count(j):
+                                    break
+                                else:
+                                    index += 1
+                            print index, map, j
+                            
+                        self.rc.sndcmd(self.rc.MAP, str(index))
+                        time.sleep(.001)
+                        self.rc.sndcmd(self.rc.ROTATE)
+                        return
+        #self.rc.sndcmd(self.rc.SAY, '\'Map not found or map not supported by gametype, try again!\' player \'%s\'' % player.name)
+        self.rc.sndcmd(self.rc.SAY, '\'Sorry SOX, that map doesnt exist or wont work here... TRY AGAIN!!! :-p\' player \'%s\'' % player.name)
+
+
+    def status(self):
+        bottle.debug(True)
+        @bottle.route('/')
+        @bottle.view('status')
+        def index():
+            return dict(host=self.host, map=self.map_name(self.map) + ' ' + self.round[0] + '/' + self.round[1], gametype=(self.gametype[0].upper() + self.gametype[1:]),\
+             pcount=self.pcount, mapfile=self.map, kills=reversed(self.kills), chat=reversed(self.chat), team1=self.players.getTeam('1'), team2=self.players.getTeam('2'))
+
+        @bottle.route('/log/')
+        def log():
+            bottle.send_file('logfile.txt', root=os.path.join(''))
+        @bottle.route('/css/:filename')
+        def css(filename):
+            bottle.send_file(filename, root=os.path.join('', 'css'))
+
+        @bottle.route('/images/:filename')
+        def images(filename):
+            bottle.send_file(filename, root=os.path.join('', 'images'))
+
+        @bottle.route('/pcount.html')
+        def pcount():
+            #return '<html><body><center>%s/32</center></body></html>' % self.pcount
+            return '<html>\n<head>\n<title></title>\n</head>\n<body style="color: #ffffff; background-color: #000000;">\n \
+                %s / 32\n</body>\n</html>' % self.pcount
+
+        @bottle.route('/chatlog/')
+        def chatlog():
+            f = open('chatlog.txt', 'r')
+            chat = ''
+            for line in f:
+                chat += line + '<br>'
+            f.close()
+            return chat
+
+        @bottle.route('/chatlog/:name')
+        def chatlog2(name):
+            f = open('chatlog.txt', 'r')
+            chat = ''
+            for line in f:
+                if line.count(name):
+                    chat += line + '</br>'
+            f.close()
+            if chat:
+                return chat
+            else:
+                return 'There doesn\'t seem to be anything here...'
+
+        @bottle.route('/badwords/', method='GET')
+        def badwords():
+            if bottle.request.GET.get('save','').strip():
+                new = bottle.request.GET.get('badword', '').strip()
+                f = open('jhflist.txt', 'r+')
+                for line in f:
+                    if new.strip() == line.strip():
+                        return '<p><strong>%s</strong> is already in the list.</p> \
+                            <a href=http://quaig.com/badwords/>Add another word</a>' % new
+                f.write(new + '\n')
+                f.close()
+                return '<p><strong>%s</strong> was added to the list.</p> \
+                    <a href=http://quaig.com/badwords/>Add another word</a><p>' % new
+                                                                                    
+            else:
+                return bottle.template('badwords.tpl')
+
+        @bottle.route('/wordlist/')
+        def wordlist():
+            bottle.send_file('badwords.txt', os.path.join(''))
+
+        def stats(when='all'):
+            f = open('logfile.txt')
+            #events = f.readlines()
+            c = clients.clients()
+            #f.close()
+            #while events:
+            for e in f:
+                #e = events.pop(0).split(';')
+                e = e.split(';')
+                if e[0].strip('\n') == str(when) or when == 'all':
+                    if e[1] == 'onJoin':
+                        c.connect('', e[2].strip('\n'), '')
+                    if e[1] == 'onKill':
+                        if not e[2].strip('\n') in c:
+                            c.connect('', e[2].strip('\n'), '')
+                        if not e[3].strip('\n') in c:
+                            c.connect('', e[3].strip('\n'), '')
+                        if e[2] == e[3]:
+                            c.getPlayer(e[2].strip('\n')).suicide()
+                        else:
+                            c.getPlayer(e[2].strip('\n')).kill()
+                            c.getPlayer(e[3].strip('\n')).death()
+                    if e[1] == 'onChat':
+                        if not e[2].strip('\n') in c:
+                            c.connect('', e[2].strip('\n'), '')
+                        c.getPlayer(e[2].strip('\n')).chat += 1
+            f.close()
+            return c
+
+        @bottle.route('stats/:player')
+        @bottle.view('player')
+        def stats_player(player):
+            c = stats()
+            if c.has_key(player):
+                p = c.getPlayer(player)
+                if p.deaths == 0:
+                    ratio = p.kills
+                else:
+                    ratio = round(float(p.kills)/float(p.deaths),3)
+                return dict(kills=p.kills, deaths=p.deaths, chat=p.chat, ratio=ratio, date=player)
+            else:
+                return dict(kills=None, deaths=None, chat=None, ratio=None, date=None)
+
+        @bottle.route('stats/:month/:day/:year')
+        @bottle.view('bestof')
+        def stats_day(month, day, year):
+            try:
+                c = stats(datetime.date(int(year), int(month), int(day)))
+                kills = dict()
+                deaths = dict()
+                chat = dict()
+                ratio = dict()
+                for p in c.getAll():
+                    kills[p.name] = p.kills
+                    deaths[p.name] = p.deaths
+                    chat[p.name] = p.chat
+                    if p.deaths == 0:
+                        ratio[p.name] = round(p.kills, 3)
+                    else:
+                        ratio[p.name] = round(float(p.kills)/float(p.deaths), 3)
+                best = sorted(kills.iteritems(), key=operator.itemgetter(1))
+                if best:
+                    bestkill = best.pop()
+                else:
+                    bestkill = ['No One', 'No']
+                best = sorted(deaths.iteritems(), key=operator.itemgetter(1))
+                if best:
+                    bestdeath = best.pop()
+                else:
+                    bestdeath = ['No One', 'No']
+                best = sorted(chat.iteritems(), key=operator.itemgetter(1))
+                if best:
+                    chat = best.pop()
+                else:
+                    chat = ['No One', 'No']
+                best = sorted(ratio.iteritems(), key=operator.itemgetter(1))
+                if best:
+                    bestratio = best.pop()
+                else:
+                    bestratio = ['No One', 'No']
+
+                return dict(kills=bestkill, deaths=bestdeath, chat=chat, ratio=bestratio, date=datetime.date(int(year), int(month), int(day)))
+            except ValueError:
+                return stats_all()
+
+        @bottle.route('/stats/all')
+        @bottle.view('bestof')
+        def stats_all():
+            kills = dict()
+            deaths = dict()
+            chat = dict()
+            ratio = dict()
+            c = stats()
+            for p in c.getAll():
+                kills[p.name] = p.kills
+                deaths[p.name] = p.deaths
+                chat[p.name] = p.chat
+                if p.deaths == 0:
+                        ratio[p.name] = round(p.kills, 3)
+                else:
+                    ratio[p.name] = round(float(p.kills)/float(p.deaths), 3)
+            best = sorted(kills.iteritems(), key=operator.itemgetter(1))
+            if best:
+                bestkill = best.pop()
+            else:
+                bestkill = ['No One', 'No']
+            best = sorted(deaths.iteritems(), key=operator.itemgetter(1))
+            if best:
+                bestdeath = best.pop()
+            else:
+                bestdeath = ['No One', 'No']
+            best = sorted(chat.iteritems(), key=operator.itemgetter(1))
+            if best:
+                chat = best.pop()
+            else:
+                chat = ['No One', 'No']
+            best = sorted(ratio.iteritems(), key=operator.itemgetter(1))
+            if best:
+                bestratio = best.pop()
+            else:
+                bestratio = ['No One', 'No']
+
+            return dict(kills=bestkill, deaths=bestdeath, chat=chat, ratio=bestratio, date='all time')
+        while self.running:
+            bottle.run(server=bottle.CherryPyServer, host='192.168.1.103', port=80)
+            #bottle.run(host='192.168.1.103', port=80)
+            
+            
+            
+
+if __name__ == '__main__':
+    monitor3()
