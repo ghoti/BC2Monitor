@@ -183,6 +183,7 @@ class monitor3(object):
         self.round[0] = data[1]
         self.round[1] = data[2]
         self.chat_queue('Map changed to: %s - Round %s of %s' % (self.map_name(self.map), data[1], data[2]))
+        self.log.info('%s;onMap;%s' % (str(datetime.date.today()), self.map))
 
     def ServerLevelstarted(self, data):
         pass
@@ -288,8 +289,16 @@ class monitor3(object):
             self.log.info('%s;onJoin;%s' % (str(datetime.date.today()), data[0]))
 
     def PlayerKill(self, data):
-        attacker = self.players.getPlayer(data[0])
-        victim = self.players.getPlayer(data[1])
+        try:
+            attacker = self.players.getPlayer(data[0])
+        except KeyError:
+            self.PlayerJoin(data[0])
+            attacker = self.players.getPlayer(data[0])
+        try:
+            victim = self.players.getPlayer(data[1])
+        except KeyError:
+            self.PlayerJoin(data[1])
+            victim = self.players.getPlayer(data[1])
 
         self.kill_queue(attacker, victim)
 
@@ -309,7 +318,7 @@ class monitor3(object):
             streak = streak.substitute(victag=victim.tag, vicname=victim.name, streak=str(victim.streak), killertag=attacker.tag, killername=attacker.name).strip('\n') + ' all'
             self.rc.sndcmd(self.rc.SAY, streak)
         victim.death()
-        self.log.info('%s;onKill;%s;%s' % (str(datetime.date.today()), attacker.name, victim.name))
+        self.log.info('%s;onKill;%s;%s;%s;%s' % (str(datetime.date.today()), attacker.name, attacker.team, victim.name, victim.team))
 
     def search_player(self, player, search):
         plist = []
@@ -502,7 +511,10 @@ class monitor3(object):
         except:
             pass
         finally:
-            sql.close()
+            try:
+                sql.close()
+            except:
+                pass
 
     def has_been_seen(self, player):
         try:
@@ -517,8 +529,11 @@ class monitor3(object):
         except:
             pass
         finally:
-            sql.close()
-
+            try:
+                sql.close()
+            except:
+                pass
+            
     def get_rank(self,player):
         while self.running:
             if not self.players.has_key(player.name):
@@ -565,7 +580,7 @@ class monitor3(object):
         except rcon.socket.error:
             pass
         except:
-            raise
+            pass
 
     def chat_queue(self, chat):
         if chat:
