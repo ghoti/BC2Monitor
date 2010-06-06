@@ -52,6 +52,8 @@ class monitor3(object):
         self.dbuser = config.get('mysql', 'user')
         self.dbpasswd = config.get('mysql', 'passwd')
         self.dbname = config.get('mysql', 'db')
+        self.webip = config.get('web', 'ip')
+        self.webport = config.get('web', 'port')
 
         self.PBMessages = (
             (re.compile(r'^PunkBuster Server: Running PB Scheduled Task \(slot #(?P<slot>\d+)\)\s+(?P<task>.*)$'), 'PBScheduledTask'),
@@ -864,7 +866,7 @@ class monitor3(object):
 
             return dict(kills=bestkill, deaths=bestdeath, chat=chat, ratio=bestratio, date='all time')
         while self.running:
-            bottle.run(server=bottle.CherryPyServer, host='192.168.1.103', port=80)
+            bottle.run(server=bottle.CherryPyServer, host=self.webip, port=self.webport)
             #bottle.run(host='192.168.1.103', port=80)
             
             
