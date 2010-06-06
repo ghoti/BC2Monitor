@@ -337,7 +337,12 @@ class monitor3(object):
             #fix the random empty line of doom?  hacky, for sure!
             if not data[0] or not data[1] or not data[2]:
                 return
-            player = self.players.getPlayer(data[0])
+            try:
+                player = self.players.getPlayer(data[0])
+            except KeyError:
+                self.PlayerJoin(data[0])
+                player = self.players.getPlayer[data[0]]
+                
             chat = data[1]
             who = data[2]
 
