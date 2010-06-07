@@ -696,7 +696,7 @@ class monitor3(object):
         @bottle.route('/pcount.html')
         def pcount():
             #return '<html><body><center>%s/32</center></body></html>' % self.pcount
-            return '<html>\n<head>\n<title></title>\n</head>\n<body style="color: #ffffff; background-color: #000000;">\n \
+            return '<html>\n<head>\n<title></title>\n</head>\n<body style="color: #ffffff; background-color: #000000;  font-size: 12px; font-family: Verdana, Arial, Helvetica, sans-serif;">\n \
                 %s / 32\n</body>\n</html>' % self.pcount
 
         @bottle.route('/chatlog/')
