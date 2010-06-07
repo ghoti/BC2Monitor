@@ -18,7 +18,7 @@ h4 { font-size: 13px;
 			font-size: 10px;
 			}
 
-#header	{ border-bottom: 1px solid #666666;
+#header	{ border-bottom: 1px solid #393939;
           display:none  }
 
 #banner  {	text-align: center;
@@ -44,7 +44,7 @@ h4 { font-size: 13px;
 #nav ul li {	display: inline;
 			list-style: none;}
 
-#status { 	border: 0px solid #ffffff;
+#status { 	border: 0px solid #393939;
 
 		}
 
@@ -82,7 +82,7 @@ h4 { font-size: 13px;
 
 #team_info1, #team_info2 { 	width: 485px;
 							height: 330px;
-							border-left: 1px solid #666666;
+							border-left: 1px solid #393939;
 							float: right;
 							text-align: center;
 							padding: 5px;}
@@ -91,7 +91,7 @@ h4 { font-size: 13px;
 			                    text-decoration: none; }
 
 
-#team_info2 { border-top: 1px solid #666666;}
+#team_info2 { border-top: 1px solid #393939;}
 
 .team_title  {	text-align: center;
 				color: red;
