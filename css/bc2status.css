@@ -18,9 +18,8 @@ h4 { font-size: 13px;
 			font-size: 10px;
 			}
 
-#header	{ 	border-bottom: 1px solid #666666;
-
-			}
+#header	{ border-bottom: 1px solid #666666;
+          display:none  }
 
 #banner  {	text-align: center;
 			}
