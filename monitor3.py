@@ -343,7 +343,7 @@ class monitor3(object):
                 player = self.players.getPlayer(data[0])
             except KeyError:
                 self.PlayerJoin(data[0])
-                player = self.players.getPlayer[data[0]]
+                player = self.players.getPlayer(data[0])
                 
             chat = data[1]
             who = data[2]
