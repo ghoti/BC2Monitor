@@ -156,6 +156,7 @@ class monitor3(object):
                 except KeyboardInterrupt:
                     print 'Keyboard interrupt caught, exiting...'
                     self.running = False
+                    self.stop_status()
 
     def event_queue(self):
         while self.running:
@@ -897,13 +898,17 @@ class monitor3(object):
 #            bottle.run(server=bottle.CherryPyServer, host=self.webip, port=self.webport)
 #            #bottle.run(host='192.168.1.103', port=80)
         d = wsgiserver.WSGIPathInfoDispatcher({'/':monitor})
-        server = wsgiserver.CherryPyWSGIServer(('0.0.0.0', 80), d)
+        self.server = wsgiserver.CherryPyWSGIServer(('0.0.0.0', 8088), d)
         while self.running:
             try:
-                server.start()
+                self.server.start()
             except:
-                server.stop()
+                self.server.stop()
                 self.running = False
+                
+    def stop_status(self):
+        self.server.stop()
+        
 
 if __name__ == '__main__':
     monitor3()
