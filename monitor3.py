@@ -899,12 +899,11 @@ class monitor3(object):
 #            #bottle.run(host='192.168.1.103', port=80)
         d = wsgiserver.WSGIPathInfoDispatcher({'/':monitor})
         self.server = wsgiserver.CherryPyWSGIServer((self.webip, self.webport), d)
-        while self.running:
-            try:
-                self.server.start()
-            except:
-                self.server.stop()
-                self.running = False
+        try:
+            self.server.start()
+        except:
+            self.server.stop()
+            self.running = False
                 
     def stop_status(self):
         self.server.stop()
