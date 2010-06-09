@@ -157,6 +157,7 @@ class monitor3(object):
                     print 'Keyboard interrupt caught, exiting...'
                     self.running = False
                     for t in threading.enumerate():
+                        t.join(.5)
                         t.is_alive = False
                     sys.exit(0)
         sys.exit(0)
@@ -877,4 +878,5 @@ if __name__ == '__main__':
     except:
         for i in threading.enumerate():
             print i
+            threading._shutdown()
         sys.exit(0)
