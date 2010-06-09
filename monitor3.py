@@ -295,11 +295,13 @@ class monitor3(object):
             attacker = self.players.getPlayer(data[0])
         except KeyError:
             self.PlayerJoin(data[0])
+            time.sleep(.5)
             attacker = self.players.getPlayer(data[0])
         try:
             victim = self.players.getPlayer(data[1])
         except KeyError:
             self.PlayerJoin(data[1])
+            time.sleep(.5)
             victim = self.players.getPlayer(data[1])
 
         self.kill_queue(attacker, victim)
