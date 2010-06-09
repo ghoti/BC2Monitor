@@ -28,7 +28,7 @@ class monitor3(object):
             print 'Instance of monitor already running...'
             sys.exit(0)
         else:
-            f = open(os.path.join('', '.monitor.lock'))
+            f = open(os.path.join('', '.monitor.lock'), 'w')
             f.write('running!')
             f.close()
             
@@ -166,6 +166,7 @@ class monitor3(object):
                     print 'There may be a delay while we close the network connections...'
                     self.stop_status()
                     self.running = False
+                    os.remove(os.path.join('', '.monitor.lock'))
 
     def event_queue(self):
         while self.running:
