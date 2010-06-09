@@ -20,7 +20,7 @@ import urllib
 import clients
 import rcon
 
-import bottle
+#import bottle
 
 class monitor3(object):
     def __init__(self):
@@ -156,11 +156,6 @@ class monitor3(object):
                 except KeyboardInterrupt:
                     print 'Keyboard interrupt caught, exiting...'
                     self.running = False
-                    for t in threading.enumerate():
-                        t.join(.5)
-                        t.is_alive = False
-                    sys.exit(0)
-        sys.exit(0)
 
     def event_queue(self):
         while self.running:
@@ -678,205 +673,237 @@ class monitor3(object):
 
 
     def status(self):
-        bottle.debug(True)
-        @bottle.route('/')
-        @bottle.view('status')
+        import flask
+        from cherrypy import wsgiserver
+         
+        monitor = flask.Flask(__name__)
+         
+        @monitor.route('/')
         def index():
-            return dict(host=self.host, map=self.map_name(self.map) + ' ' + self.round[0] + '/' + self.round[1], gametype=(self.gametype[0].upper() + self.gametype[1:]),\
-             pcount=self.pcount, mapfile=self.map, kills=reversed(self.kills), chat=reversed(self.chat), team1=self.players.getTeam('1'), team2=self.players.getTeam('2'))
-
-        @bottle.route('/log/')
-        def log():
-            bottle.send_file('logfile.txt', root=os.path.join(''))
-        @bottle.route('/css/:filename')
-        def css(filename):
-            bottle.send_file(filename, root=os.path.join('', 'css'))
-
-        @bottle.route('/images/:filename')
-        def images(filename):
-            bottle.send_file(filename, root=os.path.join('', 'images'))
-
-        @bottle.route('/pcount.html')
+            return flask.render_template('status.html', host=self.host, map=self.map_name(self.map) + ' ' + self.round[0] + '/' + self.round[1], gametype=(self.gametype[0].upper() + self.gametype[1:]),\
+                pcount=self.pcount, mapfile=self.map, kills=reversed(self.kills), chat=reversed(self.chat), team1=self.players.getTeam('1'), team2=self.players.getTeam('2'))
+         
+        @monitor.route('/pcount.html')
         def pcount():
-            #return '<html><body><center>%s/32</center></body></html>' % self.pcount
             return '<html>\n<head>\n<title></title>\n</head>\n<body style="color: #ffffff; background-color: #000000;  font-size: 12px; font-family: Verdana, Arial, Helvetica, sans-serif;">\n \
                 %s / 32\n</body>\n</html>' % self.pcount
-
-        @bottle.route('/chatlog/')
-        def chatlog():
+                
+        @monitor.route('/chatlog/')
+        @monitor.route('/chatlog/<search>')
+        def chatlog(search=None):
             f = open('chatlog.txt', 'r')
             chat = ''
-            for line in f:
-                chat += line + '<br>'
+            if not search:
+                for line in f:
+                    chat += line + '<br>'
+            else:
+                for line in f:
+                    if line.count(search):
+                        chat += line + '<br>'
             f.close()
             return chat
-
-        @bottle.route('/chatlog/:name')
-        def chatlog2(name):
-            f = open('chatlog.txt', 'r')
-            chat = ''
-            for line in f:
-                if line.count(name):
-                    chat += line + '</br>'
-            f.close()
-            if chat:
-                return chat
-            else:
-                return 'There doesn\'t seem to be anything here...'
-
-        @bottle.route('/badwords/', method='GET')
-        def badwords():
-            if bottle.request.GET.get('save','').strip():
-                new = bottle.request.GET.get('badword', '').strip()
-                f = open('jhflist.txt', 'r+')
-                for line in f:
-                    if new.strip() == line.strip():
-                        return '<p><strong>%s</strong> is already in the list.</p> \
-                            <a href=http://quaig.com/badwords/>Add another word</a>' % new
-                f.write(new + '\n')
-                f.close()
-                return '<p><strong>%s</strong> was added to the list.</p> \
-                    <a href=http://quaig.com/badwords/>Add another word</a><p>' % new
-                                                                                    
-            else:
-                return bottle.template('badwords.tpl')
-
-        @bottle.route('/wordlist/')
-        def wordlist():
-            bottle.send_file('badwords.txt', os.path.join(''))
-
-        def stats(when='all'):
-            f = open('logfile.txt')
-            #events = f.readlines()
-            c = clients.clients()
-            #f.close()
-            #while events:
-            for e in f:
-                #e = events.pop(0).split(';')
-                e = e.split(';')
-                if e[0].strip('\n') == str(when) or when == 'all':
-                    if e[1] == 'onJoin':
-                        c.connect('', e[2].strip('\n'), '')
-                    if e[1] == 'onKill':
-                        if not e[2].strip('\n') in c:
-                            c.connect('', e[2].strip('\n'), '')
-                        if not e[3].strip('\n') in c:
-                            c.connect('', e[3].strip('\n'), '')
-                        if e[2] == e[3]:
-                            c.getPlayer(e[2].strip('\n')).suicide()
-                        else:
-                            c.getPlayer(e[2].strip('\n')).kill()
-                            c.getPlayer(e[3].strip('\n')).death()
-                    if e[1] == 'onChat':
-                        if not e[2].strip('\n') in c:
-                            c.connect('', e[2].strip('\n'), '')
-                        c.getPlayer(e[2].strip('\n')).chat += 1
-            f.close()
-            return c
-
-        @bottle.route('stats/:player')
-        @bottle.view('player')
-        def stats_player(player):
-            c = stats()
-            if c.has_key(player):
-                p = c.getPlayer(player)
-                if p.deaths == 0:
-                    ratio = p.kills
-                else:
-                    ratio = round(float(p.kills)/float(p.deaths),3)
-                return dict(kills=p.kills, deaths=p.deaths, chat=p.chat, ratio=ratio, date=player)
-            else:
-                return dict(kills=None, deaths=None, chat=None, ratio=None, date=None)
-
-        @bottle.route('stats/:month/:day/:year')
-        @bottle.view('bestof')
-        def stats_day(month, day, year):
-            try:
-                c = stats(datetime.date(int(year), int(month), int(day)))
-                kills = dict()
-                deaths = dict()
-                chat = dict()
-                ratio = dict()
-                for p in c.getAll():
-                    kills[p.name] = p.kills
-                    deaths[p.name] = p.deaths
-                    chat[p.name] = p.chat
-                    if p.deaths == 0:
-                        ratio[p.name] = round(p.kills, 3)
-                    else:
-                        ratio[p.name] = round(float(p.kills)/float(p.deaths), 3)
-                best = sorted(kills.iteritems(), key=operator.itemgetter(1))
-                if best:
-                    bestkill = best.pop()
-                else:
-                    bestkill = ['No One', 'No']
-                best = sorted(deaths.iteritems(), key=operator.itemgetter(1))
-                if best:
-                    bestdeath = best.pop()
-                else:
-                    bestdeath = ['No One', 'No']
-                best = sorted(chat.iteritems(), key=operator.itemgetter(1))
-                if best:
-                    chat = best.pop()
-                else:
-                    chat = ['No One', 'No']
-                best = sorted(ratio.iteritems(), key=operator.itemgetter(1))
-                if best:
-                    bestratio = best.pop()
-                else:
-                    bestratio = ['No One', 'No']
-
-                return dict(kills=bestkill, deaths=bestdeath, chat=chat, ratio=bestratio, date=datetime.date(int(year), int(month), int(day)))
-            except ValueError:
-                return stats_all()
-
-        @bottle.route('/stats/all')
-        @bottle.view('bestof')
-        def stats_all():
-            kills = dict()
-            deaths = dict()
-            chat = dict()
-            ratio = dict()
-            c = stats()
-            for p in c.getAll():
-                kills[p.name] = p.kills
-                deaths[p.name] = p.deaths
-                chat[p.name] = p.chat
-                if p.deaths == 0:
-                        ratio[p.name] = round(p.kills, 3)
-                else:
-                    ratio[p.name] = round(float(p.kills)/float(p.deaths), 3)
-            best = sorted(kills.iteritems(), key=operator.itemgetter(1))
-            if best:
-                bestkill = best.pop()
-            else:
-                bestkill = ['No One', 'No']
-            best = sorted(deaths.iteritems(), key=operator.itemgetter(1))
-            if best:
-                bestdeath = best.pop()
-            else:
-                bestdeath = ['No One', 'No']
-            best = sorted(chat.iteritems(), key=operator.itemgetter(1))
-            if best:
-                chat = best.pop()
-            else:
-                chat = ['No One', 'No']
-            best = sorted(ratio.iteritems(), key=operator.itemgetter(1))
-            if best:
-                bestratio = best.pop()
-            else:
-                bestratio = ['No One', 'No']
-
-            return dict(kills=bestkill, deaths=bestdeath, chat=chat, ratio=bestratio, date='all time')
+         
+#        bottle.debug(True)
+#        @bottle.route('/')
+#        @bottle.view('status')
+#        def index():
+#            return dict(host=self.host, map=self.map_name(self.map) + ' ' + self.round[0] + '/' + self.round[1], gametype=(self.gametype[0].upper() + self.gametype[1:]),\
+#             pcount=self.pcount, mapfile=self.map, kills=reversed(self.kills), chat=reversed(self.chat), team1=self.players.getTeam('1'), team2=self.players.getTeam('2'))
+#
+#        @bottle.route('/log/')
+#        def log():
+#            bottle.send_file('logfile.txt', root=os.path.join(''))
+#        @bottle.route('/css/:filename')
+#        def css(filename):
+#            bottle.send_file(filename, root=os.path.join('', 'css'))
+#
+#        @bottle.route('/images/:filename')
+#        def images(filename):
+#            bottle.send_file(filename, root=os.path.join('', 'images'))
+#
+#        @bottle.route('/pcount.html')
+#        def pcount():
+#            #return '<html><body><center>%s/32</center></body></html>' % self.pcount
+#            return '<html>\n<head>\n<title></title>\n</head>\n<body style="color: #ffffff; background-color: #000000;  font-size: 12px; font-family: Verdana, Arial, Helvetica, sans-serif;">\n \
+#                %s / 32\n</body>\n</html>' % self.pcount
+#
+#        @bottle.route('/chatlog/')
+#        def chatlog():
+#            f = open('chatlog.txt', 'r')
+#            chat = ''
+#            for line in f:
+#                chat += line + '<br>'
+#            f.close()
+#            return chat
+#
+#        @bottle.route('/chatlog/:name')
+#        def chatlog2(name):
+#            f = open('chatlog.txt', 'r')
+#            chat = ''
+#            for line in f:
+#                if line.count(name):
+#                    chat += line + '</br>'
+#            f.close()
+#            if chat:
+#                return chat
+#            else:
+#                return 'There doesn\'t seem to be anything here...'
+#
+#        @bottle.route('/badwords/', method='GET')
+#        def badwords():
+#            if bottle.request.GET.get('save','').strip():
+#                new = bottle.request.GET.get('badword', '').strip()
+#                f = open('jhflist.txt', 'r+')
+#                for line in f:
+#                    if new.strip() == line.strip():
+#                        return '<p><strong>%s</strong> is already in the list.</p> \
+#                            <a href=http://quaig.com/badwords/>Add another word</a>' % new
+#                f.write(new + '\n')
+#                f.close()
+#                return '<p><strong>%s</strong> was added to the list.</p> \
+#                    <a href=http://quaig.com/badwords/>Add another word</a><p>' % new
+#                                                                                    
+#            else:
+#                return bottle.template('badwords.tpl')
+#
+#        @bottle.route('/wordlist/')
+#        def wordlist():
+#            bottle.send_file('badwords.txt', os.path.join(''))
+#
+#        def stats(when='all'):
+#            f = open('logfile.txt')
+#            #events = f.readlines()
+#            c = clients.clients()
+#            #f.close()
+#            #while events:
+#            for e in f:
+#                #e = events.pop(0).split(';')
+#                e = e.split(';')
+#                if e[0].strip('\n') == str(when) or when == 'all':
+#                    if e[1] == 'onJoin':
+#                        c.connect('', e[2].strip('\n'), '')
+#                    if e[1] == 'onKill':
+#                        if not e[2].strip('\n') in c:
+#                            c.connect('', e[2].strip('\n'), '')
+#                        if not e[3].strip('\n') in c:
+#                            c.connect('', e[3].strip('\n'), '')
+#                        if e[2] == e[3]:
+#                            c.getPlayer(e[2].strip('\n')).suicide()
+#                        else:
+#                            c.getPlayer(e[2].strip('\n')).kill()
+#                            c.getPlayer(e[3].strip('\n')).death()
+#                    if e[1] == 'onChat':
+#                        if not e[2].strip('\n') in c:
+#                            c.connect('', e[2].strip('\n'), '')
+#                        c.getPlayer(e[2].strip('\n')).chat += 1
+#            f.close()
+#            return c
+#
+#        @bottle.route('stats/:player')
+#        @bottle.view('player')
+#        def stats_player(player):
+#            c = stats()
+#            if c.has_key(player):
+#                p = c.getPlayer(player)
+#                if p.deaths == 0:
+#                    ratio = p.kills
+#                else:
+#                    ratio = round(float(p.kills)/float(p.deaths),3)
+#                return dict(kills=p.kills, deaths=p.deaths, chat=p.chat, ratio=ratio, date=player)
+#            else:
+#                return dict(kills=None, deaths=None, chat=None, ratio=None, date=None)
+#
+#        @bottle.route('stats/:month/:day/:year')
+#        @bottle.view('bestof')
+#        def stats_day(month, day, year):
+#            try:
+#                c = stats(datetime.date(int(year), int(month), int(day)))
+#                kills = dict()
+#                deaths = dict()
+#                chat = dict()
+#                ratio = dict()
+#                for p in c.getAll():
+#                    kills[p.name] = p.kills
+#                    deaths[p.name] = p.deaths
+#                    chat[p.name] = p.chat
+#                    if p.deaths == 0:
+#                        ratio[p.name] = round(p.kills, 3)
+#                    else:
+#                        ratio[p.name] = round(float(p.kills)/float(p.deaths), 3)
+#                best = sorted(kills.iteritems(), key=operator.itemgetter(1))
+#                if best:
+#                    bestkill = best.pop()
+#                else:
+#                    bestkill = ['No One', 'No']
+#                best = sorted(deaths.iteritems(), key=operator.itemgetter(1))
+#                if best:
+#                    bestdeath = best.pop()
+#                else:
+#                    bestdeath = ['No One', 'No']
+#                best = sorted(chat.iteritems(), key=operator.itemgetter(1))
+#                if best:
+#                    chat = best.pop()
+#                else:
+#                    chat = ['No One', 'No']
+#                best = sorted(ratio.iteritems(), key=operator.itemgetter(1))
+#                if best:
+#                    bestratio = best.pop()
+#                else:
+#                    bestratio = ['No One', 'No']
+#
+#                return dict(kills=bestkill, deaths=bestdeath, chat=chat, ratio=bestratio, date=datetime.date(int(year), int(month), int(day)))
+#            except ValueError:
+#                return stats_all()
+#
+#        @bottle.route('/stats/all')
+#        @bottle.view('bestof')
+#        def stats_all():
+#            kills = dict()
+#            deaths = dict()
+#            chat = dict()
+#            ratio = dict()
+#            c = stats()
+#            for p in c.getAll():
+#                kills[p.name] = p.kills
+#                deaths[p.name] = p.deaths
+#                chat[p.name] = p.chat
+#                if p.deaths == 0:
+#                        ratio[p.name] = round(p.kills, 3)
+#                else:
+#                    ratio[p.name] = round(float(p.kills)/float(p.deaths), 3)
+#            best = sorted(kills.iteritems(), key=operator.itemgetter(1))
+#            if best:
+#                bestkill = best.pop()
+#            else:
+#                bestkill = ['No One', 'No']
+#            best = sorted(deaths.iteritems(), key=operator.itemgetter(1))
+#            if best:
+#                bestdeath = best.pop()
+#            else:
+#                bestdeath = ['No One', 'No']
+#            best = sorted(chat.iteritems(), key=operator.itemgetter(1))
+#            if best:
+#                chat = best.pop()
+#            else:
+#                chat = ['No One', 'No']
+#            best = sorted(ratio.iteritems(), key=operator.itemgetter(1))
+#            if best:
+#                bestratio = best.pop()
+#            else:
+#                bestratio = ['No One', 'No']
+#
+#            return dict(kills=bestkill, deaths=bestdeath, chat=chat, ratio=bestratio, date='all time')
+#        while self.running:
+#            bottle.run(server=bottle.CherryPyServer, host=self.webip, port=self.webport)
+#            #bottle.run(host='192.168.1.103', port=80)
+        d = wsgiserver.WSGIPathInfoDispatcher({'/':monitor})
+        server = wsgiserver.CherryPyWSGIServer(('0.0.0.0', 80), d)
         while self.running:
-            bottle.run(server=bottle.CherryPyServer, host=self.webip, port=self.webport)
-            #bottle.run(host='192.168.1.103', port=80)
+            try:
+                server.start()
+            except:
+                server.stop()
+                self.running = False
 
 if __name__ == '__main__':
-    try:
-        monitor3()
-    except:
-        for i in threading.enumerate():
-            print i
-            threading._shutdown()
-        sys.exit(1)
+    monitor3()
