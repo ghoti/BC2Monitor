@@ -870,9 +870,11 @@ class monitor3(object):
         while self.running:
             bottle.run(server=bottle.CherryPyServer, host=self.webip, port=self.webport)
             #bottle.run(host='192.168.1.103', port=80)
-            
-            
-            
 
 if __name__ == '__main__':
-    monitor3()
+    try:
+        monitor3()
+    except:
+        for i in threading.enumerate():
+            print i
+        sys.exit(0)
