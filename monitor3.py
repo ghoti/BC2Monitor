@@ -24,6 +24,14 @@ import rcon
 
 class monitor3(object):
     def __init__(self):
+        if os.path.isfile(os.path.join(''), '.monitor.lock'):
+            print 'Instance of monitor already running...'
+            sys.exit(0)
+        else:
+            f = open(os.path.join(''), '.monitor.lock')
+            f.write('running!')
+            f.close()
+            
         #are we running? hah!
         self.running = True
         #set up the loggers
