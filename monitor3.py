@@ -155,8 +155,9 @@ class monitor3(object):
                     break
                 except KeyboardInterrupt:
                     print 'Keyboard interrupt caught, exiting...'
-                    self.running = False
+                    print 'There may be a delay while we close the network connections...'
                     self.stop_status()
+                    self.running = False
 
     def event_queue(self):
         while self.running:
