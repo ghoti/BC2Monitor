@@ -898,7 +898,7 @@ class monitor3(object):
 #            bottle.run(server=bottle.CherryPyServer, host=self.webip, port=self.webport)
 #            #bottle.run(host='192.168.1.103', port=80)
         d = wsgiserver.WSGIPathInfoDispatcher({'/':monitor})
-        self.server = wsgiserver.CherryPyWSGIServer((self.webip, self.webport), d)
+        self.server = wsgiserver.CherryPyWSGIServer(('0.0.0.0', 8088), d)
         try:
             self.server.start()
         except:
@@ -907,6 +907,7 @@ class monitor3(object):
                 
     def stop_status(self):
         self.server.stop()
+        self.running = False
         
 
 if __name__ == '__main__':
