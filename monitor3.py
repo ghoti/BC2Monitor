@@ -879,4 +879,4 @@ if __name__ == '__main__':
         for i in threading.enumerate():
             print i
             threading._shutdown()
-        sys.exit(0)
+        sys.exit(1)
