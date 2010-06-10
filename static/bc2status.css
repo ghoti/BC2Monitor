@@ -101,6 +101,8 @@ h4 { font-size: 13px;
                  }
 
 #footer { width: 950px;
+             height: 10px;
+             padding: 4px;
 	     float: left;
 	     border: 0px solid #393939;
 	     color: #393939;
