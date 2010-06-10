@@ -98,5 +98,12 @@ h4 { font-size: 13px;
 				font-size: 14px;
 				font-weight: bold;
 				line-height: 12px;
+                 }
 
-				}
+#footer { width: 950px;
+	     float: left;
+	     border: 0px solid #393939;
+	     color: #393939;
+	     font-family: verdana, tahoma, helvetica, arial, sans-serif;
+	     font-size: 9px;
+			}
