@@ -91,6 +91,8 @@ class monitor3(object):
         self.map = None
         self.round = ['0', '0']
         self.pcount = 0
+        self.serverrank = ''
+        self.serverperc = ''
         self.gametype = None
         self.rc = rcon.RCon()
         self.eventmon = rcon.RCon()
@@ -181,7 +183,10 @@ class monitor3(object):
                     try:
                         getattr(self, func)(task[1:])
                     except:
-                        raise
+                        print func + ' is not a valid event!'
+                        self.stop_status()
+                        self.running = False
+                        os.remove(os.path.join('', '.monitor.lock'))
                 else:
                     print "TODO:", func, task[1:]
                 self.queue.task_done()
@@ -287,7 +292,14 @@ class monitor3(object):
         data, response = self.rc.sndcmd(self.rc.SINFO)
         if response:
             self.gametype = data[4]
+        matchrank = re.compile('(?P<rank>\d+)(?P<ranksuf>\D{2})\s\(<span>(?P<percentile>\d+)(?P<percentsuf>\D{2})')
+        content = urllib.urlopen("http://www.gametracker.com/server_info/68.232.162.167:19567/").read()
 
+        m = re.search(matchrank, content)
+        if m:
+            self.serverrank = m.group('rank') + m.group('ranksuf')
+            self.serverperc = m.group('percentile') + m.group('percentsuf')
+            
     def PlayerJoin(self, data):
         if data:
             self.players.connect('', data[0], 0)
@@ -649,6 +661,13 @@ class monitor3(object):
             self.round[1] = data[7]
             self.gametype = data[4].lower()
         rc.serverSocket.close()
+        matchrank = re.compile('(?P<rank>\d+)(?P<ranksuf>\D{2})\s\(<span>(?P<percentile>\d+)(?P<percentsuf>\D{2})')
+        content = urllib.urlopen("http://www.gametracker.com/server_info/68.232.162.167:19567/").read()
+
+        m = re.search(matchrank, content)
+        if m:
+            self.serverrank = m.group('rank') + m.group('ranksuf')
+            self.serverperc = m.group('percentile') + m.group('percentsuf')
         self.chat_queue('Monitor is alive!')
 
     def map_name(self, map):
@@ -688,11 +707,12 @@ class monitor3(object):
         from cherrypy import wsgiserver
          
         monitor = flask.Flask(__name__)
+        
          
         @monitor.route('/')
         def index():
             return flask.render_template('status.html', host=self.host, map=self.map_name(self.map) + ' ' + self.round[0] + '/' + self.round[1], gametype=(self.gametype[0].upper() + self.gametype[1:]),\
-                pcount=self.pcount, mapfile=self.map, kills=reversed(self.kills), chat=reversed(self.chat), team1=self.players.getTeam('1'), team2=self.players.getTeam('2'))
+                pcount=self.pcount, mapfile=self.map, kills=reversed(self.kills), chat=reversed(self.chat), team1=self.players.getTeam('1'), team2=self.players.getTeam('2'), rank=self.serverrank, percent=self.serverperc)
          
         @monitor.route('/pcount.html')
         def pcount():
