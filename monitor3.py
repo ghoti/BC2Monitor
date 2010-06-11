@@ -125,6 +125,9 @@ class monitor3(object):
         eq = threading.Thread(target=self.event_queue)
         eq.name = 'events'
         eq.start()
+        hw = threading.Thread(target=self.host_watch())
+        hw.name = 'host_watch'
+        hw.start()
         self.do_first_run()
         threading.Thread(target=self.status).start()
         self.main_loop()
