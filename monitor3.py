@@ -16,6 +16,12 @@ import sys
 import time
 import threading
 import urllib
+import smtplib
+import socket
+
+from email.MIMEMultipart import MIMEMultipart
+from email.MIMEBase import MIMEBase
+from email.MIMEText import MIMEText
 
 import clients
 import rcon
@@ -62,6 +68,11 @@ class monitor3(object):
         self.dbname = config.get('mysql', 'db')
         self.webip = config.get('web', 'ip')
         self.webport = config.get('web', 'port')
+        self.gmail_user = config.get('email', 'user')
+        self.gmail_pwd = config.get('email', 'password')
+        self.mail_to = config.get('email', 'send_to')
+        
+        self.ip = socket.gethostbyname(socket.gethostname())
 
         self.PBMessages = (
             (re.compile(r'^PunkBuster Server: Running PB Scheduled Task \(slot #(?P<slot>\d+)\)\s+(?P<task>.*)$'), 'PBScheduledTask'),
@@ -191,6 +202,19 @@ class monitor3(object):
                     print "TODO:", func, task[1:]
                 self.queue.task_done()
             time.sleep(.01)
+            
+    def host_watch(self):
+        while self.running:
+            try:
+                newip = socket.gethostbyname(socket.gethostname())
+                if newip != self.ip:
+                    self.mail('WAFFLES! WARNING!  IP CHANGE OCCURED!', 'Monitor\'s host has a new ip!\n %s' % newip)
+                    self.ip = newip
+                else:
+                    time.sleep(1000)
+            except Exception, error:
+                print error
+                continue   
 
     def ServerLoadinglevel(self, data):
         self.map = data[0].strip('Levels/')
@@ -513,9 +537,29 @@ class monitor3(object):
 #                    for i in xrange(0,3):
 #                        self.rc.sndcmd(self.rc.SAY, '\'!!!Friendly Fire will be ON after the current round!!!  Watch your fire!!!\' all')
 #                        time.sleep(3)
-
                     
-
+    def mail(self, subject, text):
+        try:
+            msg = MIMEMultipart()
+            
+            msg['From'] = self.gmail_user
+            msg['To'] = to
+            msg['Subject'] = subject
+            
+            msg.attach(MIMEText(text))
+            
+            part = MIMEBase('application', 'octet-stream')
+            
+            mailServer = smtplib.SMTP("smtp.gmail.com", 587)
+            mailServer.ehlo()
+            mailServer.starttls()
+            mailServer.ehlo()
+            mailServer.login(self.gmail_user, self.gmail_pwd)
+            mailServer.sendmail(self.gmail_user, self.mail_to, msg.as_string())
+            # Should be mailServer.quit(), but that crashes...
+            mailServer.close()
+        except Exception, error:
+            print error
 
     def write_to_DB(self, play):
         try:
