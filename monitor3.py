@@ -218,6 +218,17 @@ class monitor3(object):
             except Exception, error:
                 print error
                 continue   
+            
+    def onSpawn(self, data):
+        pass
+    
+    def onRoundOver(self, data):
+        pass
+    
+    def onRoundOverTeamScores(self, data):
+        pass
+    
+    def 
 
     def ServerLoadinglevel(self, data):
         self.map = data[0].strip('Levels/')
