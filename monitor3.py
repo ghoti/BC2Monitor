@@ -218,13 +218,25 @@ class monitor3(object):
             except Exception, error:
                 print error
                 continue   
-            
+    '''
+    player.onSpawn <soldier name: string> <kit: string> <weapons: 3 x string> <gadgets: 3 x string>
+    '''        
     def onSpawn(self, data):
+        #try:
+        #    player = data[0]
+        #except KeyError:
+        #    self.PlayerJoin(data[0])
+        #    time.sleep(.5)
+        #    player = self.players.getPlayer(data[0])
+        #perhaps adding a "spawn time" to a player object to track time alive, spawnkilling, etc?
         pass
-    
+        
+    #server.onRoundOver <winning team: Team ID>
     def onRoundOver(self, data):
-        pass
+        self.chat_queue('Round finished - Winners: %s' % data[0])
+        self.log.info('%s;onRoundOver;%s' % data[0])
     
+    #server.onRoundOverPlayers <end-of-round soldier info : player info block>
     def onRoundOverTeamScores(self, data):
         pass
     
@@ -254,7 +266,9 @@ class monitor3(object):
         try:
             player = self.players.getPlayer(data[0])
         except KeyError:
-            return
+            self.PlayerJoin(data[0])
+            time.sleep(.5)
+            player = self.players.getPlayer(data[0])
         player.eaguid = data[1]
 
     def PlayerSquadchange(self, data):
@@ -345,6 +359,8 @@ class monitor3(object):
             self.pcount += 1
             self.log.info('%s;onJoin;%s' % (str(datetime.date.today()), data[0]))
 
+    #player.onKill <killing soldier name: string> <killed soldier name: string> <weapon: string>
+    #<headshot: boolean> <killer location: 3 x integer> <killed location: 3 x integes> 
     def PlayerKill(self, data):
         try:
             attacker = self.players.getPlayer(data[0])
@@ -358,6 +374,11 @@ class monitor3(object):
             self.PlayerJoin(data[1])
             time.sleep(.5)
             victim = self.players.getPlayer(data[1])
+            
+        weapon = data[2]
+        headshot = data[3]
+        attacker_loc = data[5:8]
+        victime_loc = data[7:]
 
         self.kill_queue(attacker, victim)
 
