@@ -25,6 +25,7 @@ from email.MIMEText import MIMEText
 
 import clients
 import rcon
+from _mysql_exceptions import OperationalError
 
 #import bottle
 
@@ -583,8 +584,8 @@ class monitor3(object):
             else:
                 dbplayers.insert().execute(player_name=play.name, clan_tag=play.tag, ip=play.ip, guid=play.pbid,
                                            times_seen=1, first_seen=today, last_seen=today)
-        except:
-            pass
+        except Exception, error:
+            print error            
         finally:
             try:
                 sql.close()
@@ -601,8 +602,8 @@ class monitor3(object):
                 return True
             else:
                 return False
-        except:
-            pass
+        except Exception, error:
+            print error
         finally:
             try:
                 sql.close()
@@ -654,8 +655,8 @@ class monitor3(object):
             pass
         except rcon.socket.error:
             pass
-        except:
-            pass
+        except Exception, error:
+            print error
 
     def chat_queue(self, chat):
         if chat:
