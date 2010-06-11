@@ -527,9 +527,6 @@ class monitor3(object):
 
             self.log.info('%s;onChat;%s;%s' % (str(datetime.date.today()), player.name, chat))
 
-    def handle_command(self, player, chat):
-        pass
-                
 #        elif m and m.group('cid').lower() == '!ff' and player.power:
 #            data, response = self.rc.sndcmd(self.rc.FF)
 #            if response:
