@@ -69,7 +69,7 @@ class monitor3(object):
         self.webip = config.get('web', 'ip')
         self.webport = config.get('web', 'port')
         self.gmail_user = config.get('email', 'user')
-        self.gmail_pwd = config.get('email', 'password')
+        self.gmail_pwd = config.get('email', 'pass')
         self.mail_to = config.get('email', 'send_to')
         
         self.ip = socket.gethostbyname(socket.gethostname())
