@@ -228,8 +228,6 @@ class monitor3(object):
     def onRoundOverTeamScores(self, data):
         pass
     
-    def 
-
     def ServerLoadinglevel(self, data):
         self.map = data[0].strip('Levels/')
         self.round[0] = data[1]
