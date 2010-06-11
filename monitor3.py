@@ -544,7 +544,7 @@ class monitor3(object):
             msg = MIMEMultipart()
             
             msg['From'] = self.gmail_user
-            msg['To'] = to
+            msg['To'] = self.mail_to
             msg['Subject'] = subject
             
             msg.attach(MIMEText(text))
