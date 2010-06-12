@@ -525,11 +525,11 @@ class monitor3(object):
                     self.rc.sndcmd(self.rc.ROTATE)
                     
             #display rules of server to player - seems to be used in other admin programs
-            elif re.search('!rules', chat, re.I):
-                self.rc.sndcmd('\'Watch this space.. For the time being, check jhfgames.com for our rules\' player \'%s\'' % player.name)
+            elif re.search('!rules', chat, re.I) and player.power >= player.PUBLIC:
+                self.rc.sndcmd(self.rc.SAY, '\'Watch this space.. For the time being, check jhfgames.com for our rules\' player \'%s\'' % player.name)
             
             #display command help to player, general help, or specific help available!
-            elif re.search('!help', chat, re.I):
+            elif re.search('!help', chat, re.I) and player.power >= player.PUBLIC:
                 m = re.match(self.command, chat)
                 commands = ['!rules, ', '!help, ', '!stats, ', '!chuck, ']
                 if player.power >= player.RECRUIT:
@@ -545,13 +545,13 @@ class monitor3(object):
                 if m:
                     #!todo
                     if self.command.has_key(m.group('parms')) and commands.count(m.group('parms')):
-                        self.rc.sndcmd(self.rc.SAY, '\'%s - %s\' player %s' % (m.group('parms'), self.command[m.group('parms')], player.name))
+                        self.rc.sndcmd(self.rc.SAY, '\'%s - %s\' player \'%s\'' % (m.group('parms'), self.command[m.group('parms')], player.name))
                     else:
-                        self.rc.sndcmd(self.rc.SAY, '\'Command not found or command not available to you.  Please try again.\' player %s' % player.name)                           
+                        self.rc.sndcmd(self.rc.SAY, '\'Command not found or command not available to you.  Please try again.\' player \'%s\'' % player.name)                           
                 else:   
-                    self.rc.sndcmd(self.rc.SAY, '\'Available commands to \'%s\'.  Try !help [command] for more help\' player %s' % player.name)
+                    self.rc.sndcmd(self.rc.SAY, '\'Available commands to %s.  Try !help [command] for more help\' player \'%s\'' % player.name)
                     time.sleep(.001)
-                    self.rc.sndcmd(self.rc.SAY, '\'%s\' player %s' % (''.join(commands), player.name))
+                    self.rc.sndcmd(self.rc.SAY, '\'%s\' player \'%s\'' % (''.join(commands), player.name))
                             
             self.log.info('%s;onChat;%s;%s' % (str(datetime.date.today()), player.name, chat))
 
