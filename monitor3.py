@@ -25,7 +25,6 @@ from email.MIMEText import MIMEText
 
 import clients
 import rcon
-from _mysql_exceptions import OperationalError
 
 #import bottle
 
@@ -205,10 +204,7 @@ class monitor3(object):
                     try:
                         getattr(self, func)(task[1:])
                     except:
-                        print func + ' is not a valid event!'
-                        self.stop_status()
-                        self.running = False
-                        os.remove(os.path.join('', '.monitor.lock'))
+                        pass
                 else:
                     print "TODO:", func, task[1:]
                 self.queue.task_done()
