@@ -530,7 +530,7 @@ class monitor3(object):
             
             #display command help to player, general help, or specific help available!
             elif re.search('!help', chat, re.I) and player.power >= player.PUBLIC:
-                m = re.match(self.command, chat)
+                p = re.match(self.command, chat)
                 commands = ['!rules, ', '!help, ', '!stats, ', '!chuck, ']
                 if player.power >= player.RECRUIT:
                     commands.append('!punish, ')
@@ -542,12 +542,15 @@ class monitor3(object):
                     commands.append('!kick, ')
                 if player.power >= player.SUPER:
                     commands.append('!ban')
-                if m:
-                    #!todo
-                    if self.command.has_key(m.group('parms')) and commands.count(m.group('parms')):
-                        self.rc.sndcmd(self.rc.SAY, '\'%s - %s\' player \'%s\'' % (m.group('parms'), self.command[m.group('parms')], player.name))
-                    else:
-                        self.rc.sndcmd(self.rc.SAY, '\'Command not found or command not available to you.  Please try again.\' player \'%s\'' % player.name)                           
+                if p.group('parms'):
+                    for c in self.command.keys():
+                        m = re.match(c, chat)
+                        if m:
+                            #!todo
+                            if self.command.has_key(m.group('parms')) and commands.count(m.group('parms')):
+                                self.rc.sndcmd(self.rc.SAY, '\'%s - %s\' player \'%s\'' % (m.group('parms'), self.command[m.group('parms')], player.name))
+                                break
+                    self.rc.sndcmd(self.rc.SAY, '\'Command not found or command not available to you.  Please try again.\' player \'%s\'' % player.name)                           
                 else:   
                     self.rc.sndcmd(self.rc.SAY, '\'Available commands to %s.  Try !help [command] for more help\' player \'%s\'' % player.name)
                     time.sleep(.001)
