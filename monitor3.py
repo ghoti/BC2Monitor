@@ -522,6 +522,20 @@ class monitor3(object):
                         self.rc.sndcmd(self.rc.ADDMAP, 'Levels/%s' % map)
                         time.sleep(.01)
                     self.rc.sndcmd(self.rc.ROTATE)
+                    
+            #display rules of server to player - seems to be used in other admin programs
+            elif re.search('!rules', chat, re.I):
+                self.rc.sndcmd('\'Watch this space.. For the time being, check jhfgames.com for our rules\' player \'%s\'' % player.name)
+            
+            #display command help to player, general help, or specific help available!
+            elif re.search('!help', chat, re.I):
+                m = re.match(self.command, chat)
+                if m:
+                    #!todo
+                    pass
+                else:
+                    #!todo
+                    pass
 
             self.log.info('%s;onChat;%s;%s' % (str(datetime.date.today()), player.name, chat))
 
