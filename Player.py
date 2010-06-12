@@ -52,6 +52,7 @@ class player(object):
         else:
             self.power = self.PUBLIC
         self.warning = 0
+        self.votekicks = 0
     def kill(self):
         self.kills += 1
         self.streak += 1

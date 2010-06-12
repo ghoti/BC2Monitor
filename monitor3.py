@@ -25,6 +25,7 @@ from email.MIMEText import MIMEText
 
 import clients
 import rcon
+from _mysql_exceptions import OperationalError
 
 #import bottle
 
@@ -94,6 +95,8 @@ class monitor3(object):
                    'Laguna Presa':'MP_009GR'}
         self.SQDM = {'Isla Inocentes':'MP_004SDM', 'Africa Harbor':'MP_006SDM', 'White Pass':'MP_007SDM', 'Laguna Presa':'MP_009SDM'}
         self.SQRUSH = {'Panama Canal':'MP_001SR', 'Valparaiso':'MP_002SR', 'Atacama Desert':'MP_005SR', 'Port Valdez':'MP_012SR'}
+        
+        self.command = re.compile(r'^(?P<cid>\'[^\']{2,}\'|[0-9]+|[^\s]{2,}|@[0-9]+)\s?(?P<parms>.*)$')
 
         self.players = clients.clients()
         self.queue = Queue.Queue()
@@ -480,8 +483,7 @@ class monitor3(object):
                 self.chat_queue('Server: ' + fact)
 
             elif re.search('!punish', chat, re.I) and player.power >= player.RECRUIT:
-                command = re.compile(r'^(?P<cid>\'[^\']{2,}\'|[0-9]+|[^\s]{2,}|@[0-9]+)\s?(?P<parms>.*)$')
-                m = re.match(command, chat)
+                m = re.match(self.command, chat)
                 punish = self.search_player(player, m.group('parms').split()[0])
                 if punish:
                     self.rc.sndcmd(self.rc.YELL, '\'You are being punished by a JHF admin for misbehaving.There will be no more warnings!!!\' 6000 player \'%s\'' % punish.name)
@@ -489,8 +491,7 @@ class monitor3(object):
                     self.rc.sndcmd(self.rc.PUNISH, punish.name)
                     
             elif re.search('!kick', chat, re.I) and player.power >= player.ADMIN:
-                command = re.compile(r'^(?P<cid>\'[^\']{2,}\'|[0-9]+|[^\s]{2,}|@[0-9]+)\s?(?P<parms>.*)$')
-                m = re.match(command, chat)
+                m = re.match(self.command, chat)
                 parms = m.group('parms').split()
                 if len(parms) == 1:
                     reason = 'ADMIN DECISION'
@@ -509,8 +510,7 @@ class monitor3(object):
                     self.rc.sndcmd(self.rc.KICK, '\"%s\" \"%s\" \"%s\"\'' % (kick.name, ktime, reason))
 
             elif re.search('!ban', chat, re.I) and player.power >= player.SUPER:
-                command = re.compile(r'^(?P<cid>\'[^\']{2,}\'|[0-9]+|[^\s]{2,}|@[0-9]+)\s?(?P<parms>.*)$')
-                m = re.match(command, chat)
+                m = re.match(self.command, chat)
                 parms = m.group('parms').split()
                 if len(parms) > 1:
                     r = parms[1:]
@@ -528,37 +528,47 @@ class monitor3(object):
                 else:
                     self.rc.sndcmd(self.rc.SAY, '\'A reason is required to BAN a player\' player \'%s\'' %
                         player.name)
+                    
             elif re.search('!restart', chat, re.I) and player.power >= player.MOD:
                 self.rc.sndcmd(self.rc.RESTART)
 
             elif re.search('!map', chat, re.I) and player.power >= player.RECRUIT:
-                command = re.compile(r'^(?P<cid>\'[^\']{2,}\'|[0-9]+|[^\s]{2,}|@[0-9]+)\s?(?P<parms>.*)$')
-                m = re.match(command, chat)
+                m = re.match(self.command, chat)
                 self.map_name_easy(player, m.group('parms'))
             
             elif re.search('!gametype', chat, re.I) and player.power >= player.MOD:
-                command = re.compile(r'^(?P<cid>\'[^\']{2,}\'|[0-9]+|[^\s]{2,}|@[0-9]+)\s?(?P<parms>.*)$')
-                m = re.match(command, chat)
-                if m.group('parms').lower().count('rush'):
+                m = re.match(self.command, chat)
+                if m and m.group('parms').lower().count('rush'):
                     self.rc.sndcmd(self.rc.SETGAMETYPE, 'RUSH')
                     time.sleep(.01)
                     for map in self.RUSH.values():
                         self.rc.sndcmd(self.rc.ADDMAP, 'Levels/%s' % map)
                         time.sleep(.01)
                     self.rc.sndcmd(self.rc.ROTATE)
-                elif m.group('parms').lower().count('conquest'):
+                elif m and m.group('parms').lower().count('conquest'):
                     self.rc.sndcmd(self.rc.SETGAMETYPE, 'CONQUEST')
                     time.sleep(.01)
                     for map in self.CONQUEST.values():
                         self.rc.sndcmd(self.rc.ADDMAP, 'Levels/%s' % map)
                         time.sleep(.01)
                     self.rc.sndcmd(self.rc.ROTATE)
+                    
+            #display rules of server to player - seems to be used in other admin programs
+            elif re.search('!rules', chat, re.I):
+                self.rc.sndcmd('\'Watch this space.. For the time being, check jhfgames.com for our rules\' player \'%s\'' % player.name)
+            
+            #display command help to player, general help, or specific help available!
+            elif re.search('!help', chat, re.I):
+                m = re.match(self.command, chat)
+                if m:
+                    #!todo
+                    pass
+                else:
+                    #!todo
+                    pass
 
             self.log.info('%s;onChat;%s;%s' % (str(datetime.date.today()), player.name, chat))
 
-    def handle_command(self, player, chat):
-        pass
-                
 #        elif m and m.group('cid').lower() == '!ff' and player.power:
 #            data, response = self.rc.sndcmd(self.rc.FF)
 #            if response:
@@ -576,7 +586,7 @@ class monitor3(object):
             msg = MIMEMultipart()
             
             msg['From'] = self.gmail_user
-            msg['To'] = to
+            msg['To'] = self.mail_to
             msg['Subject'] = subject
             
             msg.attach(MIMEText(text))
@@ -613,8 +623,8 @@ class monitor3(object):
             else:
                 dbplayers.insert().execute(player_name=play.name, clan_tag=play.tag, ip=play.ip, guid=play.pbid,
                                            times_seen=1, first_seen=today, last_seen=today)
-        except:
-            pass
+        except Exception, error:
+            print error            
         finally:
             try:
                 sql.close()
@@ -631,8 +641,8 @@ class monitor3(object):
                 return True
             else:
                 return False
-        except:
-            pass
+        except Exception, error:
+            print error
         finally:
             try:
                 sql.close()
@@ -684,8 +694,8 @@ class monitor3(object):
             pass
         except rcon.socket.error:
             pass
-        except:
-            pass
+        except Exception, error:
+            print error
 
     def chat_queue(self, chat):
         if chat:
