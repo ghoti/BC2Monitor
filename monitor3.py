@@ -96,6 +96,11 @@ class monitor3(object):
         self.SQDM = {'Isla Inocentes':'MP_004SDM', 'Africa Harbor':'MP_006SDM', 'White Pass':'MP_007SDM', 'Laguna Presa':'MP_009SDM'}
         self.SQRUSH = {'Panama Canal':'MP_001SR', 'Valparaiso':'MP_002SR', 'Atacama Desert':'MP_005SR', 'Port Valdez':'MP_012SR'}
         
+        self.command = {'rules':'Show the server rules to player', 'help': 'Show player general help.  Takes optional argument command for specific help', 'stats':'Show all players kills, deaths, and ratio for player', 
+                        'chuck':'Show all players a random Chuck Norris message', 'punish':'Required argument [player].  Kills [player] and displays attention getting message', 
+                        'map':'Required argument [map].  Changes map to [map] with immediate effect.', 'restart':'Restarts current map', 'kick':'Required arguments [player],[time],and [reason].  Kicks [player] for [time] minutes for [reason].',
+                        'ban':'Required arguments [player] and [reason].  Bans [player] for [reason]', 'gametype':'Required argument [gametype].  Changes server to [gametype] with immediate effect.'}
+        
         self.command = re.compile(r'^(?P<cid>\'[^\']{2,}\'|[0-9]+|[^\s]{2,}|@[0-9]+)\s?(?P<parms>.*)$')
 
         self.players = clients.clients()
@@ -530,13 +535,28 @@ class monitor3(object):
             #display command help to player, general help, or specific help available!
             elif re.search('!help', chat, re.I):
                 m = re.match(self.command, chat)
+                commands = ['!rules, ', '!help, ', '!stats, ', '!chuck, ']
+                if player.power >= player.RECRUIT:
+                    commands.append('!punish, ')
+                    commands.appen('!map, ')
+                if player.power >= player.MOD:
+                    commands.append('!gametype, ')
+                    commands.append('!restart, ')
+                if player.power >= player.ADMIN:
+                    commands.append('!kick, ')
+                if player.power >= player.SUPER:
+                    commands.append('!ban')
                 if m:
                     #!todo
-                    pass
-                else:
-                    #!todo
-                    pass
-
+                    if self.command.has_key(m.group('parms')) and commands.count(m.group('parms')):
+                        self.rc.sndcmd(self.rc.SAY, '\'%s - %s\' player %s' % (m.group('parms'), self.command[m.group('parms')], player.name))
+                    else:
+                        self.rc.sndcmd(self.rc.SAY, '\'Command not found or command not available to you.  Please try again.\' player %s' % player.name)                           
+                else:   
+                    self.rc.sndcmd(self.rc.SAY, '\'Available commands to \'%s\'.  Try !help [command] for more help\' player %s' % player.name)
+                    time.sleep(.001)
+                    self.rc.sndcmd(self.rc.SAY, '\'%s\' player %s' % (''.join(commands), player.name))
+                            
             self.log.info('%s;onChat;%s;%s' % (str(datetime.date.today()), player.name, chat))
 
 #        elif m and m.group('cid').lower() == '!ff' and player.power:
