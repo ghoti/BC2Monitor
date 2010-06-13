@@ -72,7 +72,7 @@ class monitor3(object):
         self.gmail_pwd = config.get('email', 'pass')
         self.mail_to = config.get('email', 'send_to')
         
-        self.ip = socket.gethostbyname(socket.gethostname())
+        self.ip = urllib.urlopen('http://whatismyip.org/').read()
 
         self.PBMessages = (
             (re.compile(r'^PunkBuster Server: Running PB Scheduled Task \(slot #(?P<slot>\d+)\)\s+(?P<task>.*)$'), 'PBScheduledTask'),
@@ -213,7 +213,7 @@ class monitor3(object):
     def host_watch(self):
         while self.running:
             try:
-                newip = socket.gethostbyname(socket.gethostname())
+                newip = urllib.urlopen('http://whatismyip.org/').read()
                 print self.ip, newip
                 if newip != self.ip:
                     print 'SENT EMAIL ABOUT NEW IP'
