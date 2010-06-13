@@ -583,6 +583,11 @@ class monitor3(object):
             #display rules of server to player - seems to be used in other admin programs
             elif re.search('!rules', chat, re.I) and player.power >= player.PUBLIC:
                 self.rc.sndcmd(self.rc.SAY, '\'Watch this space.. For the time being, check jhfgames.com for our rules\' player \'%s\'' % player.name)
+                
+            #even if we never use it, it's got to be included ;)
+            elif chat.lower().startswith('!forgive'):
+                pass
+                
                             
             self.log.info('%s;onChat;%s;%s' % (str(datetime.date.today()), player.name, chat))
 
