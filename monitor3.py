@@ -95,7 +95,7 @@ class monitor3(object):
         self.SQDM = {'Isla Inocentes':'MP_004SDM', 'Africa Harbor':'MP_006SDM', 'White Pass':'MP_007SDM', 'Laguna Presa':'MP_009SDM'}
         self.SQRUSH = {'Panama Canal':'MP_001SR', 'Valparaiso':'MP_002SR', 'Atacama Desert':'MP_005SR', 'Port Valdez':'MP_012SR'}
         
-        self.command = {'rules':'Show the server rules to player', 'help': 'Show player general help.  Takes optional argument command for specific help', 'stats':'Show all players kills, deaths, and ratio for player', 
+        self.commands = {'rules':'Show the server rules to player', 'help': 'Show player general help.  Takes optional argument command for specific help', 'stats':'Show all players kills, deaths, and ratio for player', 
                         'chuck':'Show all players a random Chuck Norris message', 'punish':'Required argument [player].  Kills [player] and displays attention getting message', 
                         'map':'Required argument [map].  Changes map to [map] with immediate effect.', 'restart':'Restarts current map', 'kick':'Required arguments [player],[time],and [reason].  Kicks [player] for [time] minutes for [reason].',
                         'ban':'Required arguments [player] and [reason].  Bans [player] for [reason]', 'gametype':'Required argument [gametype].  Changes server to [gametype] with immediate effect.'}
@@ -459,6 +459,32 @@ class monitor3(object):
                             self.rc.sndcmd(self.rc.BAN, '"%s" "%s" "???" "We do not tolerate that language here"' % (player.pbid, player.name))
                             break
             
+            #display command help to player, general help, or specific help available!
+            if chat.lower().startswith('!help') and player.power >= player.PUBLIC:
+                commands = ['!rules, ', '!help, ', '!stats, ', '!chuck, ']
+                if player.power >= player.RECRUIT:
+                    commands.append('!punish, ')
+                    commands.append('!map, ')
+                if player.power >= player.MOD:
+                    commands.append('!gametype, ')
+                    commands.append('!restart, ')
+                if player.power >= player.ADMIN:
+                    commands.append('!kick, ')
+                if player.power >= player.SUPER:
+                    commands.append('!ban')
+                p = re.match(self.command, chat)
+                if p.group('parms'):
+                    if self.commands.has_key(p.group('parms')):
+                        if commands.count(p.group('parms')) or commands.count(p.group('parms')):
+                                self.rc.sndcmd(self.rc.SAY, '\'%s - %s\' player \'%s\'' % (m.group('parms'), self.command[m.group('parms')], player.name))
+                    else:
+                        self.rc.sndcmd(self.rc.SAY, '\'Command not found or command not available to you.  Please try again.\' player \'%s\'' % player.name)                           
+                else:   
+                    self.rc.sndcmd(self.rc.SAY, '\'Available commands to %s.  Try !help [command] for more help\' player \'%s\'' % (player.name, player.name))
+                    time.sleep(.001)
+                    self.rc.sndcmd(self.rc.SAY, '\'%s\' player \'%s\'' % (''.join(commands), player.name))
+                return
+            
             if re.search('!stats', chat, re.I):
                 if player.deaths == 0:
                     statline = '\'%s %s: %i kills and 0 deaths for a ratio of %.2f\'' % \
@@ -483,7 +509,7 @@ class monitor3(object):
                 self.rc.sndcmd(self.rc.SAY, '\'' + fact + '\' all')
                 self.chat_queue('Server: ' + fact)
 
-            elif re.search('!punish', chat, re.I) and player.power >= player.RECRUIT:
+            elif chat.lower().startswith('!punish') and player.power >= player.RECRUIT:
                 m = re.match(self.command, chat)
                 punish = self.search_player(player, m.group('parms').split()[0])
                 if punish:
@@ -491,7 +517,7 @@ class monitor3(object):
                     time.sleep(2)
                     self.rc.sndcmd(self.rc.PUNISH, punish.name)
                     
-            elif re.search('!kick', chat, re.I) and player.power >= player.ADMIN:
+            elif chat.lower().startswith('!kick') and player.power >= player.ADMIN:
                 m = re.match(self.command, chat)
                 parms = m.group('parms').split()
                 if len(parms) == 1:
@@ -510,7 +536,7 @@ class monitor3(object):
                 if kick:
                     self.rc.sndcmd(self.rc.KICK, '\"%s\" \"%s\" \"%s\"\'' % (kick.name, ktime, reason))
 
-            elif re.search('!ban', chat, re.I) and player.power >= player.SUPER:
+            elif chat.lower().startswith('!ban') and player.power >= player.SUPER:
                 m = re.match(self.command, chat)
                 parms = m.group('parms').split()
                 if len(parms) > 1:
@@ -533,11 +559,11 @@ class monitor3(object):
             elif re.search('!restart', chat, re.I) and player.power >= player.MOD:
                 self.rc.sndcmd(self.rc.RESTART)
 
-            elif re.search('!map', chat, re.I) and player.power >= player.RECRUIT:
+            elif chat.lower().startswith('!map') and player.power >= player.RECRUIT:
                 m = re.match(self.command, chat)
                 self.map_name_easy(player, m.group('parms'))
             
-            elif re.search('!gametype', chat, re.I) and player.power >= player.MOD:
+            elif chat.lower().startswith('!gametype') and player.power >= player.MOD:
                 m = re.match(self.command, chat)
                 if m and m.group('parms').lower().count('rush'):
                     self.rc.sndcmd(self.rc.SETGAMETYPE, 'RUSH')
@@ -557,34 +583,6 @@ class monitor3(object):
             #display rules of server to player - seems to be used in other admin programs
             elif re.search('!rules', chat, re.I) and player.power >= player.PUBLIC:
                 self.rc.sndcmd(self.rc.SAY, '\'Watch this space.. For the time being, check jhfgames.com for our rules\' player \'%s\'' % player.name)
-            
-            #display command help to player, general help, or specific help available!
-            elif re.search('!help', chat, re.I) and player.power >= player.PUBLIC:
-                p = re.match(self.command, chat)
-                commands = ['!rules, ', '!help, ', '!stats, ', '!chuck, ']
-                if player.power >= player.RECRUIT:
-                    commands.append('!punish, ')
-                    commands.appen('!map, ')
-                if player.power >= player.MOD:
-                    commands.append('!gametype, ')
-                    commands.append('!restart, ')
-                if player.power >= player.ADMIN:
-                    commands.append('!kick, ')
-                if player.power >= player.SUPER:
-                    commands.append('!ban')
-                if p.group('parms'):
-                    for c in self.command.keys():
-                        m = re.match(c, chat)
-                        if m:
-                            #!todo
-                            if self.command.has_key(m.group('parms')) and commands.count(m.group('parms')):
-                                self.rc.sndcmd(self.rc.SAY, '\'%s - %s\' player \'%s\'' % (m.group('parms'), self.command[m.group('parms')], player.name))
-                                break
-                    self.rc.sndcmd(self.rc.SAY, '\'Command not found or command not available to you.  Please try again.\' player \'%s\'' % player.name)                           
-                else:   
-                    self.rc.sndcmd(self.rc.SAY, '\'Available commands to %s.  Try !help [command] for more help\' player \'%s\'' % player.name)
-                    time.sleep(.001)
-                    self.rc.sndcmd(self.rc.SAY, '\'%s\' player \'%s\'' % (''.join(commands), player.name))
                             
             self.log.info('%s;onChat;%s;%s' % (str(datetime.date.today()), player.name, chat))
 
