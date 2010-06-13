@@ -447,7 +447,7 @@ class monitor3(object):
                 p = re.match(self.command, chat)
                 if p.group('parms'):
                     if self.commands.has_key(p.group('parms')):
-                        if commands.count(p.group('parms')) or commands.count(p.group('parms')):
+                        if commands.count(p.group('parms') + ', ') or commands.count('!ban'):
                                 self.rc.sndcmd(self.rc.SAY, '\'%s - %s\' player \'%s\'' % (m.group('parms'), self.command[m.group('parms')], player.name))
                     else:
                         self.rc.sndcmd(self.rc.SAY, '\'Command not found or command not available to you.  Please try again.\' player \'%s\'' % player.name)                           
