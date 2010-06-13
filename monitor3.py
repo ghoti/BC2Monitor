@@ -214,7 +214,9 @@ class monitor3(object):
         while self.running:
             try:
                 newip = socket.gethostbyname(socket.gethostname())
+                print self.ip, newip
                 if newip != self.ip:
+                    print 'SENT EMAIL ABOUT NEW IP'
                     self.mail('WAFFLES! WARNING!  IP CHANGE OCCURED!', 'Monitor\'s host has a new ip!\n %s' % newip)
                     self.ip = newip
                 else:
