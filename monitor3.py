@@ -97,7 +97,7 @@ class monitor3(object):
         
         self.commands = {'!rules':'Show the server rules to player', '!help': 'Show player general help.  Takes optional argument command for specific help', '!stats':'Show all players kills, deaths, and ratio for player', 
                         '!chuck':'Show all players a random Chuck Norris message', '!punish':'Required argument [player].  Kills [player] and displays attention getting message', 
-                        '!map':'Required argument [map].  Changes map to [map] with immediate effect.', '!restart':'Restarts current map', '!kick':'Required arguments [player],[time],and [reason].  Kicks [player] for [time] minutes for [reason].',
+                        '!map':'Required argument [map].  Changes map to [map] with immediate effect.', '!restart':'Restarts current map', '!kick':'Required arguments [player],[time],and [reason] Kicks [player] for [time] for [reason]',
                         '!ban':'Required arguments [player] and [reason].  Bans [player] for [reason]', '!gametype':'Required argument [gametype].  Changes server to [gametype] with immediate effect.'}
         
         self.command = re.compile(r'^(?P<cid>\'[^\']{2,}\'|[0-9]+|[^\s]{2,}|@[0-9]+)\s?(?P<parms>.*)$')
@@ -448,7 +448,7 @@ class monitor3(object):
                 if p.group('parms'):
                     if self.commands.has_key(p.group('parms')):
                         if commands.count(p.group('parms') + ', ') or commands.count('!ban'):
-                                self.rc.sndcmd(self.rc.SAY, '\'%s - %s\' player \'%s\'' % (m.group('parms'), self.command[m.group('parms')], player.name))
+                                self.rc.sndcmd(self.rc.SAY, '\'%s - %s\' player \'%s\'' % (p.group('parms'), self.commands[p.group('parms')], player.name))
                     else:
                         self.rc.sndcmd(self.rc.SAY, '\'Command not found or command not available to you.  Please try again.\' player \'%s\'' % player.name)                           
                 else:   
