@@ -95,10 +95,10 @@ class monitor3(object):
         self.SQDM = {'Isla Inocentes':'MP_004SDM', 'Africa Harbor':'MP_006SDM', 'White Pass':'MP_007SDM', 'Laguna Presa':'MP_009SDM'}
         self.SQRUSH = {'Panama Canal':'MP_001SR', 'Valparaiso':'MP_002SR', 'Atacama Desert':'MP_005SR', 'Port Valdez':'MP_012SR'}
         
-        self.commands = {'rules':'Show the server rules to player', 'help': 'Show player general help.  Takes optional argument command for specific help', 'stats':'Show all players kills, deaths, and ratio for player', 
-                        'chuck':'Show all players a random Chuck Norris message', 'punish':'Required argument [player].  Kills [player] and displays attention getting message', 
-                        'map':'Required argument [map].  Changes map to [map] with immediate effect.', 'restart':'Restarts current map', 'kick':'Required arguments [player],[time],and [reason].  Kicks [player] for [time] minutes for [reason].',
-                        'ban':'Required arguments [player] and [reason].  Bans [player] for [reason]', 'gametype':'Required argument [gametype].  Changes server to [gametype] with immediate effect.'}
+        self.commands = {'!rules':'Show the server rules to player', '!help': 'Show player general help.  Takes optional argument command for specific help', '!stats':'Show all players kills, deaths, and ratio for player', 
+                        '!chuck':'Show all players a random Chuck Norris message', '!punish':'Required argument [player].  Kills [player] and displays attention getting message', 
+                        '!map':'Required argument [map].  Changes map to [map] with immediate effect.', '!restart':'Restarts current map', '!kick':'Required arguments [player],[time],and [reason].  Kicks [player] for [time] minutes for [reason].',
+                        '!ban':'Required arguments [player] and [reason].  Bans [player] for [reason]', '!gametype':'Required argument [gametype].  Changes server to [gametype] with immediate effect.'}
         
         self.command = re.compile(r'^(?P<cid>\'[^\']{2,}\'|[0-9]+|[^\s]{2,}|@[0-9]+)\s?(?P<parms>.*)$')
 

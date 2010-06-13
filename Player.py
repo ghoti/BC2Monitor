@@ -18,7 +18,8 @@ class player(object):
     def __init__(self, name, tag, team):
         ADMINS = {'-gH0Ti-':self.SUPER, 'H0FFA':self.SUPER, 'JimmyT13':self.SUPER, 'Madindian':self.SUPER,
                 'HaveSocks':self.SUPER, '|-Smoke-|':self.SUPER, 'Astromarmot':self.SUPER, 'l3ONE':self.SUPER,
-                'OBMer':self.SUPER,'Gwawk':self.SUPER, 'phyZilla':self.SUPER, 'Fralix':self.SUPER, 'Luxxord':self.RECRUIT}
+                'OBMer':self.SUPER,'Gwawk':self.SUPER, 'phyZilla':self.SUPER, 'Fralix':self.SUPER, 'Luxxord':self.RECRUIT,
+                'ch3w3mup':self.RECRUIT, 'jhfveritas':self.SUPER}
         if name.count("'"):
             self.name = name.replace("'", '')
         elif name.count('"'):
