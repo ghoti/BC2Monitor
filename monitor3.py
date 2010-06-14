@@ -174,6 +174,7 @@ class monitor3(object):
                     self.eventmon.serverSocket.close()
                     break
                 except rcon.socket.error:
+                    print 'socket error in main_loop'
                     time.sleep(30)
                     self.rc.close()
                     self.eventmon.close()
@@ -222,6 +223,7 @@ class monitor3(object):
                 else:
                     time.sleep(1000)
             except Exception, error:
+                print 'error in host_watch'
                 print error
                 continue   
 
@@ -326,12 +328,16 @@ class monitor3(object):
         if response:
             self.gametype = data[4]
         matchrank = re.compile('(?P<rank>\d+)(?P<ranksuf>\D{2})\s\(<span>(?P<percentile>\d+)(?P<percentsuf>\D{2})')
-        content = urllib.urlopen("http://www.gametracker.com/server_info/68.232.162.167:19567/").read()
-
-        m = re.search(matchrank, content)
-        if m:
-            self.serverrank = m.group('rank') + m.group('ranksuf')
-            self.serverperc = m.group('percentile') + m.group('percentsuf')
+        try:
+            content = urllib.urlopen("http://www.gametracker.com/server_info/68.232.162.167:19567/").read()
+    
+            m = re.search(matchrank, content)
+            if m:
+                self.serverrank = m.group('rank') + m.group('ranksuf')
+                self.serverperc = m.group('percentile') + m.group('percentsuf')
+        except Exception, error:
+            print 'error in get_server_rank'
+            print error
             
     def PlayerJoin(self, data):
         if data:
@@ -591,6 +597,7 @@ class monitor3(object):
             # Should be mailServer.quit(), but that crashes...
             mailServer.close()
         except Exception, error:
+            print 'error sending email~'
             print error
 
     def write_to_DB(self, play):
@@ -613,6 +620,7 @@ class monitor3(object):
                 dbplayers.insert().execute(player_name=play.name, clan_tag=play.tag, ip=play.ip, guid=play.pbid,
                                            times_seen=1, first_seen=today, last_seen=today)
         except Exception, error:
+            print 'error in writing_db'
             print error            
         finally:
             try:
@@ -631,6 +639,7 @@ class monitor3(object):
             else:
                 return False
         except Exception, error:
+            print 'error in has_been_seen'
             print error
         finally:
             try:
@@ -684,6 +693,7 @@ class monitor3(object):
         except rcon.socket.error:
             pass
         except Exception, error:
+            print 'some other error in new_player'
             print error
 
     def chat_queue(self, chat):
