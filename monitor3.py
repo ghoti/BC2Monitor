@@ -840,7 +840,10 @@ class monitor3(object):
         
         @monitor.route('/chattail/')
         def tailchat():
-            return subprocess.Popen(['tail', '-n 10', '/home/ghoti/BC2Monitor/chatlog.txt'])
+            tail = ''
+            for line in subprocess.Popen(['tail', '-n 10', '/home/ghoti/BC2Monitor/logfile.txt'], shell=False, stdout=subprocess.PIPE).communicate()[0]:
+                tail += line + '<br>'
+            return tail
          
 #        bottle.debug(True)
 #        @bottle.route('/')
