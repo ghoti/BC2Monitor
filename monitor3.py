@@ -833,7 +833,7 @@ class monitor3(object):
             f = open('logfile.txt', 'r')
             log = '' 
             for line in f:
-                log += line
+                log += line + '<br>'
             f.close()
             return log
          
