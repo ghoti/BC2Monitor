@@ -175,7 +175,7 @@ class monitor3(object):
                     break
                 except rcon.socket.error:
                     print 'socket error in main_loop'
-                    time.sleep(30)
+                    time.sleep(10)
                     self.rc.close()
                     self.eventmon.close()
                     break
@@ -308,25 +308,33 @@ class monitor3(object):
     #every 60 seconds an automated server message appears, so we will use an already existing timer to regulate our
     #hammering the server for player count verification.  hacky?  yes.  Awesome?  you betcha
     def PBScheduledTask(self, match):
-        data, response = self.rc.sndcmd(self.rc.PINFO, 'all')
-        if response:
-            #self.pcount = int(data[11])
-            if self.pcount != int(data[11]):
-                self.pcount = int(data[11])
-                for p in self.players.getAll():
-                    if not data.count(p.name):
-                        for i in threading._enumerate():
-                            if i.name == p.name:
-                                return
-                        self.write_to_DB(p)
-                        self.players.disconnect(p.name)
-        #print 'players dict:', len(self.players)
+        try:
+            data, response = self.rc.sndcmd(self.rc.PINFO, 'all')
+            if response:
+                #self.pcount = int(data[11])
+                if self.pcount != int(data[11]):
+                    self.pcount = int(data[11])
+                    for p in self.players.getAll():
+                        if not data.count(p.name):
+                            for i in threading._enumerate():
+                                if i.name == p.name:
+                                    return
+                            self.write_to_DB(p)
+                            self.players.disconnect(p.name)
+        except Exception, error:
+            print 'error in count watch'
+            print error
+            #print 'players dict:', len(self.players)
 
     #same as above, but for the gametype
     def PBMasterQuerySent(self, match):
-        data, response = self.rc.sndcmd(self.rc.SINFO)
-        if response:
-            self.gametype = data[4]
+        try:
+            data, response = self.rc.sndcmd(self.rc.SINFO)
+            if response:
+                self.gametype = data[4]
+        except Exception, error:
+            print 'error in gametype watch'
+            print error
         matchrank = re.compile('(?P<rank>\d+)(?P<ranksuf>\D{2})\s\(<span>(?P<percentile>\d+)(?P<percentsuf>\D{2})')
         try:
             content = urllib.urlopen("http://www.gametracker.com/server_info/68.232.162.167:19567/").read()
