@@ -25,6 +25,7 @@ from email.MIMEText import MIMEText
 
 import clients
 import rcon
+import subprocess
 
 #import bottle
 
@@ -836,6 +837,10 @@ class monitor3(object):
                 log += line + '<br>'
             f.close()
             return log
+        
+        @monitor.route('/chattail/')
+        def tailchat():
+            return subprocess.Popen(['tail', '-n 10', '/home/ghoti/BC2Monitor/chatlog.txt'])
          
 #        bottle.debug(True)
 #        @bottle.route('/')
