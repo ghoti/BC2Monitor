@@ -827,6 +827,15 @@ class monitor3(object):
                         chat += line + '<br>'
             f.close()
             return chat
+        
+        @monitor.route('/log/')
+        def log():
+            f = open('logfile.txt', 'r')
+            log = '' 
+            for line in f:
+                log += line
+            f.close()
+            return log
          
 #        bottle.debug(True)
 #        @bottle.route('/')
