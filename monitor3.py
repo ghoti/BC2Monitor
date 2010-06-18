@@ -158,7 +158,7 @@ class monitor3(object):
                     continue
 
             words = None
-            while self.running:
+            while self.running and self.eventmon.serverSocket is not None and self.rc.serverSocket is not None:
                 try:
                     event, self.eventmon.receiveBuffer = self.eventmon.receivePacket(self.eventmon.serverSocket,
                                                                                         self.eventmon.receiveBuffer)

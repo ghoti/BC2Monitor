@@ -106,6 +106,7 @@ class RCon(object):
             print 'error sending command'
             print request
             print error
+            self.close()
             return
         [isFromServer, isResponse, sequence, words] = self.DecodePacket(packet)
 
