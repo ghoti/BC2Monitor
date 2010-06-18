@@ -841,7 +841,7 @@ class monitor3(object):
         @monitor.route('/chattail/')
         def tailchat():
             tail = ''
-            for line in subprocess.Popen(['tail', '-n 10', '/home/ghoti/BC2Monitor/logfile.txt'], shell=False, stdout=subprocess.PIPE).communicate()[0]:
+            for line in subprocess.Popen(['tail', '-n 10', '/home/ghoti/BC2Monitor/chatlog.txt'], shell=False, stdout=subprocess.PIPE).communicate()[0].split('\n'):
                 tail += line + '<br>'
             return tail
          
