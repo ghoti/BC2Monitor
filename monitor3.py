@@ -571,8 +571,10 @@ class monitor3(object):
                     
             #display rules of server to player - seems to be used in other admin programs
             elif re.search('!rules', chat, re.I) and player.power >= player.PUBLIC:
-                self.rc.sndcmd(self.rc.SAY, '\'Watch this space.. For the time being, check jhfgames.com for our rules\' player \'%s\'' % player.name)
-                            
+                with open('rules.txt', 'r') as f:
+                    for line in f:
+                        self.rc.sndcmd(self.rc.SAY, '\'%s\' player \'%s\'' % (line.strip('\n'), player.name))
+                        time.sleep(2)    
             self.log.info('%s;onChat;%s;%s' % (str(datetime.date.today()), player.name, chat))
 
 #        elif m and m.group('cid').lower() == '!ff' and player.power:
