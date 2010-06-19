@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+from __future__ import with_statement
 import ConfigParser
 import datetime
 import json
@@ -73,7 +74,10 @@ class monitor3(object):
         self.gmail_pwd = config.get('email', 'pass')
         self.mail_to = config.get('email', 'send_to')
         
-        self.ip = urllib.urlopen('http://whatismyip.org/').read()
+        try:
+            self.ip = urllib.urlopen('http://whatismyip.org/').read()
+        except:
+            pass
 
         self.PBMessages = (
             (re.compile(r'^PunkBuster Server: Running PB Scheduled Task \(slot #(?P<slot>\d+)\)\s+(?P<task>.*)$'), 'PBScheduledTask'),
@@ -117,18 +121,16 @@ class monitor3(object):
         self.eventmon = rcon.RCon()
 
         self.badwords = []
-        f = open('badwords.txt', 'r')
-        for line in f:
-            if line:
-                self.badwords.append(line.strip('\n'))
-        f.close()
+        with open('badwords.txt', 'r') as f:
+            for line in f:
+                if line:
+                    self.badwords.append(line.strip('\n'))
         
         self.banwords = []
-        f = open('banlist.txt', 'r')
-        for line in f:
-            if line:
-                self.badwords.append(line.strip('\n'))
-        f.close()
+        with open('banlist.txt', 'r') as f:
+            for line in f:
+                if line:
+                    self.badwords.append(line.strip('\n'))
         
         eq = threading.Thread(target=self.event_queue)
         eq.name = 'events'
@@ -425,7 +427,7 @@ class monitor3(object):
             self.logger.info(player.name + ': ' + who + ': ' + chat)
 
             for word in self.badwords:
-                if re.search(word, chat, re.I):
+                if re.search('\\b' + word + '\\b', chat, re.I):
                     if player.warning:
                         self.rc.sndcmd(self.rc.KICK, '"%s" "10" "That language is not acceptable here."\'' % player.name)
                         break
@@ -437,7 +439,7 @@ class monitor3(object):
                         self.logger.info('Player %s was warned for bad language' % player.name)
                         break
             for word in self.banwords:
-                if re.search(word, chat, re.I):
+                if re.search('\\b' + word + '\\b', chat, re.I):
                     if player.pbid:
                         if player.ip:
                             self.rc.sndcmd(self.rc.BAN, '\"%s\" \"%s\" \"%s\" \"We do not tolerate that language here\""' % (player.pbid, player.name, player.ip))
