@@ -98,10 +98,16 @@ class RCon(object):
         command = self.getCommand(command)
         words = shlex.split(command + ' ' + target)
         request = self.EncodeClientRequest(words)
-        self.serverSocket.send(request)
-        #packet = self.serverSocket.recv(4096)
-        [packet, self.receiveBuffer] = self.receivePacket(self.serverSocket, self.receiveBuffer)
-
+        try:
+            self.serverSocket.send(request)
+            #packet = self.serverSocket.recv(4096)
+            [packet, self.receiveBuffer] = self.receivePacket(self.serverSocket, self.receiveBuffer)
+        except Exception, error:
+            print 'error sending command'
+            print request
+            print error
+            self.close()
+            return
         [isFromServer, isResponse, sequence, words] = self.DecodePacket(packet)
 
         return words, isResponse

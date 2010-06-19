@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+from __future__ import with_statement
 import ConfigParser
 import datetime
 import json
@@ -25,6 +26,7 @@ from email.MIMEText import MIMEText
 
 import clients
 import rcon
+import subprocess
 
 #import bottle
 
@@ -72,7 +74,10 @@ class monitor3(object):
         self.gmail_pwd = config.get('email', 'pass')
         self.mail_to = config.get('email', 'send_to')
         
-        self.ip = socket.gethostbyname(socket.gethostname())
+        try:
+            self.ip = urllib.urlopen('http://whatismyip.org/').read()
+        except:
+            pass
 
         self.PBMessages = (
             (re.compile(r'^PunkBuster Server: Running PB Scheduled Task \(slot #(?P<slot>\d+)\)\s+(?P<task>.*)$'), 'PBScheduledTask'),
@@ -95,10 +100,10 @@ class monitor3(object):
         self.SQDM = {'Isla Inocentes':'MP_004SDM', 'Africa Harbor':'MP_006SDM', 'White Pass':'MP_007SDM', 'Laguna Presa':'MP_009SDM'}
         self.SQRUSH = {'Panama Canal':'MP_001SR', 'Valparaiso':'MP_002SR', 'Atacama Desert':'MP_005SR', 'Port Valdez':'MP_012SR'}
         
-        self.commands = {'rules':'Show the server rules to player', 'help': 'Show player general help.  Takes optional argument command for specific help', 'stats':'Show all players kills, deaths, and ratio for player', 
-                        'chuck':'Show all players a random Chuck Norris message', 'punish':'Required argument [player].  Kills [player] and displays attention getting message', 
-                        'map':'Required argument [map].  Changes map to [map] with immediate effect.', 'restart':'Restarts current map', 'kick':'Required arguments [player],[time],and [reason].  Kicks [player] for [time] minutes for [reason].',
-                        'ban':'Required arguments [player] and [reason].  Bans [player] for [reason]', 'gametype':'Required argument [gametype].  Changes server to [gametype] with immediate effect.'}
+        self.commands = {'!rules':'Show the server rules to player', '!help': 'Show player general help.  Takes optional argument command for specific help', '!stats':'Show all players kills, deaths, and ratio for player', 
+                        '!chuck':'Show all players a random Chuck Norris message', '!punish':'Required argument [player].  Kills [player] and displays attention getting message', 
+                        '!map':'Required argument [map].  Changes map to [map] with immediate effect.', '!restart':'Restarts current map', '!kick':'Required arguments [player],[time],and [reason] Kicks [player] for [time] for [reason]',
+                        '!ban':'Required arguments [player] and [reason].  Bans [player] for [reason]', '!gametype':'Required argument [gametype].  Changes server to [gametype] with immediate effect.'}
         
         self.command = re.compile(r'^(?P<cid>\'[^\']{2,}\'|[0-9]+|[^\s]{2,}|@[0-9]+)\s?(?P<parms>.*)$')
 
@@ -116,18 +121,16 @@ class monitor3(object):
         self.eventmon = rcon.RCon()
 
         self.badwords = []
-        f = open('badwords.txt', 'r')
-        for line in f:
-            if line:
-                self.badwords.append(line.strip('\n'))
-        f.close()
+        with open('badwords.txt', 'r') as f:
+            for line in f:
+                if line:
+                    self.badwords.append(line.strip('\n'))
         
         self.banwords = []
-        f = open('banlist.txt', 'r')
-        for line in f:
-            if line:
-                self.badwords.append(line.strip('\n'))
-        f.close()
+        with open('banlist.txt', 'r') as f:
+            for line in f:
+                if line:
+                    self.badwords.append(line.strip('\n'))
         
         eq = threading.Thread(target=self.event_queue)
         eq.name = 'events'
@@ -158,7 +161,7 @@ class monitor3(object):
                     continue
 
             words = None
-            while self.running:
+            while self.running and self.eventmon.serverSocket is not None and self.rc.serverSocket is not None:
                 try:
                     event, self.eventmon.receiveBuffer = self.eventmon.receivePacket(self.eventmon.serverSocket,
                                                                                         self.eventmon.receiveBuffer)
@@ -174,7 +177,8 @@ class monitor3(object):
                     self.eventmon.serverSocket.close()
                     break
                 except rcon.socket.error:
-                    time.sleep(30)
+                    print 'socket error in main_loop'
+                    time.sleep(10)
                     self.rc.close()
                     self.eventmon.close()
                     break
@@ -213,13 +217,16 @@ class monitor3(object):
     def host_watch(self):
         while self.running:
             try:
-                newip = socket.gethostbyname(socket.gethostname())
+                newip = urllib.urlopen('http://whatismyip.org/').read()
+                print self.ip, newip
                 if newip != self.ip:
+                    print 'SENT EMAIL ABOUT NEW IP'
                     self.mail('WAFFLES! WARNING!  IP CHANGE OCCURED!', 'Monitor\'s host has a new ip!\n %s' % newip)
                     self.ip = newip
                 else:
                     time.sleep(1000)
             except Exception, error:
+                print 'error in host_watch'
                 print error
                 continue   
     '''
@@ -327,32 +334,44 @@ class monitor3(object):
     #every 60 seconds an automated server message appears, so we will use an already existing timer to regulate our
     #hammering the server for player count verification.  hacky?  yes.  Awesome?  you betcha
     def PBScheduledTask(self, match):
-        data, response = self.rc.sndcmd(self.rc.PINFO, 'all')
-        if response:
-            #self.pcount = int(data[11])
-            if self.pcount != int(data[11]):
-                self.pcount = int(data[11])
-                for p in self.players.getAll():
-                    if not data.count(p.name):
-                        for i in threading._enumerate():
-                            if i.name == p.name:
-                                return
-                        self.write_to_DB(p)
-                        self.players.disconnect(p.name)
-        #print 'players dict:', len(self.players)
+        try:
+            data, response = self.rc.sndcmd(self.rc.PINFO, 'all')
+            if response:
+                #self.pcount = int(data[11])
+                if self.pcount != int(data[11]):
+                    self.pcount = int(data[11])
+                    for p in self.players.getAll():
+                        if not data.count(p.name):
+                            for i in threading._enumerate():
+                                if i.name == p.name:
+                                    return
+                            self.write_to_DB(p)
+                            self.players.disconnect(p.name)
+        except Exception, error:
+            print 'error in count watch'
+            print error
+            #print 'players dict:', len(self.players)
 
     #same as above, but for the gametype
     def PBMasterQuerySent(self, match):
-        data, response = self.rc.sndcmd(self.rc.SINFO)
-        if response:
-            self.gametype = data[4]
+        try:
+            data, response = self.rc.sndcmd(self.rc.SINFO)
+            if response:
+                self.gametype = data[4]
+        except Exception, error:
+            print 'error in gametype watch'
+            print error
         matchrank = re.compile('(?P<rank>\d+)(?P<ranksuf>\D{2})\s\(<span>(?P<percentile>\d+)(?P<percentsuf>\D{2})')
-        content = urllib.urlopen("http://www.gametracker.com/server_info/68.232.162.167:19567/").read()
-
-        m = re.search(matchrank, content)
-        if m:
-            self.serverrank = m.group('rank') + m.group('ranksuf')
-            self.serverperc = m.group('percentile') + m.group('percentsuf')
+        try:
+            content = urllib.urlopen("http://www.gametracker.com/server_info/68.232.162.167:19567/").read()
+    
+            m = re.search(matchrank, content)
+            if m:
+                self.serverrank = m.group('rank') + m.group('ranksuf')
+                self.serverperc = m.group('percentile') + m.group('percentsuf')
+        except Exception, error:
+            print 'error in get_server_rank'
+            print error
             
     def PlayerJoin(self, data):
         if data:
@@ -438,7 +457,7 @@ class monitor3(object):
             self.logger.info(player.name + ': ' + who + ': ' + chat)
 
             for word in self.badwords:
-                if re.search(word, chat, re.I):
+                if re.search('\\b' + word + '\\b', chat, re.I):
                     if player.warning:
                         self.rc.sndcmd(self.rc.KICK, '"%s" "10" "That language is not acceptable here."\'' % player.name)
                         break
@@ -450,7 +469,7 @@ class monitor3(object):
                         self.logger.info('Player %s was warned for bad language' % player.name)
                         break
             for word in self.banwords:
-                if re.search(word, chat, re.I):
+                if re.search('\\b' + word + '\\b', chat, re.I):
                     if player.pbid:
                         if player.ip:
                             self.rc.sndcmd(self.rc.BAN, '\"%s\" \"%s\" \"%s\" \"We do not tolerate that language here\""' % (player.pbid, player.name, player.ip))
@@ -475,8 +494,8 @@ class monitor3(object):
                 p = re.match(self.command, chat)
                 if p.group('parms'):
                     if self.commands.has_key(p.group('parms')):
-                        if commands.count(p.group('parms')) or commands.count(p.group('parms')):
-                                self.rc.sndcmd(self.rc.SAY, '\'%s - %s\' player \'%s\'' % (m.group('parms'), self.command[m.group('parms')], player.name))
+                        if commands.count(p.group('parms') + ', ') or commands.count('!ban'):
+                                self.rc.sndcmd(self.rc.SAY, '\'%s - %s\' player \'%s\'' % (p.group('parms'), self.commands[p.group('parms')], player.name))
                     else:
                         self.rc.sndcmd(self.rc.SAY, '\'Command not found or command not available to you.  Please try again.\' player \'%s\'' % player.name)                           
                 else:   
@@ -624,6 +643,7 @@ class monitor3(object):
             # Should be mailServer.quit(), but that crashes...
             mailServer.close()
         except Exception, error:
+            print 'error sending email~'
             print error
 
     def write_to_DB(self, play):
@@ -646,6 +666,7 @@ class monitor3(object):
                 dbplayers.insert().execute(player_name=play.name, clan_tag=play.tag, ip=play.ip, guid=play.pbid,
                                            times_seen=1, first_seen=today, last_seen=today)
         except Exception, error:
+            print 'error in writing_db'
             print error            
         finally:
             try:
@@ -664,6 +685,7 @@ class monitor3(object):
             else:
                 return False
         except Exception, error:
+            print 'error in has_been_seen'
             print error
         finally:
             try:
@@ -717,6 +739,7 @@ class monitor3(object):
         except rcon.socket.error:
             pass
         except Exception, error:
+            print 'some other error in new_player'
             print error
 
     def chat_queue(self, chat):
@@ -842,6 +865,22 @@ class monitor3(object):
                         chat += line + '<br>'
             f.close()
             return chat
+        
+        @monitor.route('/log/')
+        def log():
+            f = open('logfile.txt', 'r')
+            log = '' 
+            for line in f:
+                log += line + '<br>'
+            f.close()
+            return log
+        
+        @monitor.route('/chattail/')
+        def tailchat():
+            tail = ''
+            for line in subprocess.Popen(['tail', '-n 10', '/home/ghoti/BC2Monitor/chatlog.txt'], shell=False, stdout=subprocess.PIPE).communicate()[0].split('\n'):
+                tail += line + '<br>'
+            return tail
          
 #        bottle.debug(True)
 #        @bottle.route('/')
