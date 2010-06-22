@@ -445,7 +445,7 @@ class monitor3(object):
                             self.rc.sndcmd(self.rc.BAN, '\"%s\" \"%s\" \"%s\" \"We do not tolerate that language here\""' % (player.pbid, player.name, player.ip))
                             break
                         else:
-                            self.rc.sndcmd(self.rc.BAN, '"%s" "%s" "???" "We do not tolerate that language here"' % (player.pbid, player.name))
+                            self.rc.sndcmd(self.rc.BAN, '\"%s\" \"%s\" \"???\" \"We do not tolerate that language here\""' % (player.pbid, player.name))
                             break
             
             #display command help to player, general help, or specific help available!
