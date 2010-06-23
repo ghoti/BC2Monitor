@@ -837,7 +837,9 @@ class monitor3(object):
                         print 'current map', self.map
                         print 'changing map', mapname, nextIndex
                         self.rc.sndcmd(self.rc.MAP, nextIndex)
-                        self.rc.sndcmd(self.rc.ROTATE)              
+                        self.rc.sndcmd(self.rc.ROTATE)   
+        except Exception, detail:
+            print detail           
             
 #        for i, j in self.ALLmaps.items():
 #            if re.search(map.lower(), i.lower()):
@@ -862,7 +864,6 @@ class monitor3(object):
 #                        return
         #self.rc.sndcmd(self.rc.SAY, '\'Map not found or map not supported by gametype, try again!\' player \'%s\'' % player.name)
         #self.rc.sndcmd(self.rc.SAY, '\'Sorry SOX, that map doesnt exist or wont work here... TRY AGAIN!!! :-p\' player \'%s\'' % player.name)
-
 
     def status(self):
         import flask
