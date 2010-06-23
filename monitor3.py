@@ -475,7 +475,7 @@ class monitor3(object):
                             self.rc.sndcmd(self.rc.BAN, '\"%s\" \"%s\" \"%s\" \"We do not tolerate that language here\""' % (player.pbid, player.name, player.ip))
                             break
                         else:
-                            self.rc.sndcmd(self.rc.BAN, '"%s" "%s" "???" "We do not tolerate that language here"' % (player.pbid, player.name))
+                            self.rc.sndcmd(self.rc.BAN, '\"%s\" \"%s\" \"???\" \"We do not tolerate that language here\""' % (player.pbid, player.name))
                             break
             
             #display command help to player, general help, or specific help available!
@@ -808,31 +808,94 @@ class monitor3(object):
             if map.count(j):
                 return i
         return map
+    
+    def map_server(self, map):
+        counter = 0
+        for i, j in self.ALLmaps.items():
+            if re.search(map, i, re.I):
+                counter += 1
+                mapname = j
+        return counter, mapname
+    
+    #This code blatantly stolen and adapted from b3 bot
+    def getNextMapIndex(self):
+        try:
+            data, response = self.rc.sndcmd(self.rc.MAP)
+            if response:
+                nextIndex = int(data)
+                if nextIndex == -1:
+                    return -1
+                data, response = self.rc.sndcmd(self.rc.MAPLIST)
+                if response:
+                    if data[nextIndex] == self.map: 
+                        nextIndex = (nextIndex + 1) % len(data)
+                return nextIndex
+        except:
+            return -2            
 
     def map_name_easy(self, player, map):
-        for i, j in self.ALLmaps.items():
-            if re.search(map.lower(), i.lower()):
-                data, response = self.rc.sndcmd(self.rc.GAMETYPE)
+        try:
+            data, response = self.rc.sndcmd(self.rc.GAMETYPE)
+            if response:
+                self.gametype = data[1]
+            
+            if response:
+                available_maps = data[1:]
+
+            i, mapname = self.map_server(map)
+            if i > 1:
+                self.rc.sndcmd(self.rc.SAY, '\'Ambiguous map named!  Try being more specific!\' player \'%s\'' % player.name)
+            elif i == 0:
+                self.rc.sndcmd(self.rc.SAY, '\'No map found with that name, TRY AGAIN! :-p\' player \'%s\'' % player.name)
+            elif i == 1:
+                data, response = self.rc.sndcmd(self.rc.AVAILMAPS)
                 if response:
-                    if i in eval('self.' + data[1]):
-                        list, res = self.rc.sndcmd(self.rc.MAPLIST)
-                        list.pop(0)
-                        print list,
-                        index = 0
-                        if res:
-                            while index < len(list):
-                                if list[index].count(j):
-                                    break
+                    if data.count(mapname):
+                        data, response = self.rc.sndcmd(self.rc.MAPLIST)
+                        if response:
+                            if mapname not in data:
+                                nextIndex = self.getNextMapIndex()
+                                if nextIndex == -2:
+                                    return
+                                elif nextIndex == -1:
+                                    self.rc.sndcmd(self.rc.ADDMAP, mapname)
+                                    nexIndex = 0
                                 else:
-                                    index += 1
-                            print index, map, j
-                            
-                        self.rc.sndcmd(self.rc.MAP, str(index))
-                        time.sleep(.001)
-                        self.rc.sndcmd(self.rc.ROTATE)
-                        return
+                                    if nextIndex == 0:
+                                        nextIndex = 1
+                                    self.rc.sndcmd(self.rc.MAPINSERT, str(nextIndex) + ' ' + mapname)
+                            else:
+                                nextIndex = 0
+                                while nextIndex < len(data) and data[nextIndex] != mapname:
+                                    nextIndex += 1
+                        print 'current map', self.map
+                        print 'changing map', mapname, nextIndex
+                        self.rc.sndcmd(self.rc.MAP, nextIndex)
+                        self.rc.sndcmd(self.rc.ROTATE)              
+            
+#        for i, j in self.ALLmaps.items():
+#            if re.search(map.lower(), i.lower()):
+#                data, response = self.rc.sndcmd(self.rc.GAMETYPE)
+#                if response:
+#                    if i in eval('self.' + data[1]):
+#                        list, res = self.rc.sndcmd(self.rc.MAPLIST)
+#                        list.pop(0)
+#                        print list,
+#                        index = 0
+#                        if res:
+#                            while index < len(list):
+#                                if list[index].count(j):
+#                                    break
+#                                else:
+#                                    index += 1
+#                            print index, map, j
+#                            
+#                        self.rc.sndcmd(self.rc.MAP, str(index))
+#                        time.sleep(.001)
+#                        self.rc.sndcmd(self.rc.ROTATE)
+#                        return
         #self.rc.sndcmd(self.rc.SAY, '\'Map not found or map not supported by gametype, try again!\' player \'%s\'' % player.name)
-        self.rc.sndcmd(self.rc.SAY, '\'Sorry SOX, that map doesnt exist or wont work here... TRY AGAIN!!! :-p\' player \'%s\'' % player.name)
+        #self.rc.sndcmd(self.rc.SAY, '\'Sorry SOX, that map doesnt exist or wont work here... TRY AGAIN!!! :-p\' player \'%s\'' % player.name)
 
 
     def status(self):

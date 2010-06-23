@@ -28,6 +28,8 @@ class RCon(object):
     MAPLIST = 12
     SETGAMETYPE = 13
     ADDMAP = 14
+    AVAILMAPS = 15
+    MAPINSERT = 16
 
     def __init__(self):
         self.serverSocket = None
@@ -129,6 +131,8 @@ class RCon(object):
         elif command == self.ROTATE:    return 'admin.runNextLevel'
         elif command == self.MAPLIST:   return 'mapList.list'
         elif command == self.ADDMAP:    return 'mapList.append'
+        elif command == self.AVAILMAPS: return 'admin.supportedMaps'
+        elif command == self.MAPINSERT: return 'mapList.insert'
 
     def EncodeHeader(self, isFromServer, isResponse, sequence):
         header = sequence & 0x3fffffff
