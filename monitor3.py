@@ -402,7 +402,7 @@ class monitor3(object):
         attacker_loc = data[5:8]
         victime_loc = data[7:]
 
-        self.kill_queue(attacker, victim)
+        self.kill_queue(attacker, victim, weapon, headshot)
 
         if attacker.name != victim.name:
             if attacker.team == victim.team:
@@ -748,15 +748,15 @@ class monitor3(object):
                 self.chat.pop(0)
             self.chat.append('%s - %s' % (time.strftime("%m/%d %H:%M:%S", time.localtime()), chat))
 
-    def kill_queue(self, attacker, victim):
+    def kill_queue(self, attacker, victim, weapon, headshot):
         if len(self.kills) >= 10:
             self.kills.pop(0)
         if attacker.name == victim.name:
-            self.kills.append('%s commited suicide' % attacker.name)
+            self.kills.append('%s commited suicide with a %s' % (attacker.name, weapon))
         elif attacker.team == victim.team:
-            self.kills.append('%s teamkilled %s' % (attacker.name, victim.name))
+            self.kills.append('%s teamkilled %s with a %s' % (attacker.name, victim.name, weapon))
         else:
-            self.kills.append('%s killed %s' % (attacker.name, victim.name))
+            self.kills.append('%s killed %s with a %s' % (attacker.name, victim.name, weapon))
 
     def do_first_run(self):
         '''
