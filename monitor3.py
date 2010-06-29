@@ -244,7 +244,7 @@ class monitor3(object):
     #server.onRoundOver <winning team: Team ID>
     def onRoundOver(self, data):
         self.chat_queue('Round finished - Winners: %s' % data[0])
-        self.log.info('%s;onRoundOver;%s' % (str(datetime.date.today()), data[0]))
+        self.log.info('%s;onRoundOver;%s' % (str(time.time()), data[0]))
     
     #server.onRoundOverPlayers <end-of-round soldier info : player info block>
     def onRoundOverTeamScores(self, data):
@@ -255,7 +255,7 @@ class monitor3(object):
         self.round[0] = data[1]
         self.round[1] = data[2]
         self.chat_queue('Map changed to: %s - Round %s of %s' % (self.map_name(self.map), data[1], data[2]))
-        self.log.info('%s;onMap;%s' % (str(datetime.date.today()), self.map))
+        self.log.info('%s;onMap;%s' % (str(time.time()), self.map))
 
     def ServerLevelstarted(self, data):
         pass
@@ -270,7 +270,7 @@ class monitor3(object):
             self.pcount -= 1
         except KeyError:
             pass
-        self.log.info('%s;onLeave;%s' % (str(datetime.date.today()), data[0]))
+        self.log.info('%s;onLeave;%s' % (str(time.time()), data[0]))
 
     def PlayerAuthenticated(self, data):
         try:
@@ -379,7 +379,7 @@ class monitor3(object):
             newp.name = self.players.getPlayer(data[0]).name
             newp.start()
             self.pcount += 1
-            self.log.info('%s;onJoin;%s' % (str(datetime.date.today()), data[0]))
+            self.log.info('%s;onJoin;%s' % (str(time.time()), data[0]))
 
     #player.onKill <killing soldier name: string> <killed soldier name: string> <weapon: string>
     #<headshot: boolean> <killer location: 3 x integer> <killed location: 3 x integes> 
@@ -608,7 +608,7 @@ class monitor3(object):
             elif chat.lower().startswith('!forgive'):
                 pass
             
-            self.log.info('%s;onChat;%s;%s' % (str(datetime.date.today()), player.name, chat))
+            self.log.info('%s;onChat;%s;%s' % (str(time.time()), player.name, chat))
 
 #        elif m and m.group('cid').lower() == '!ff' and player.power:
 #            data, response = self.rc.sndcmd(self.rc.FF)
