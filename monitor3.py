@@ -177,7 +177,6 @@ class monitor3(object):
                     self.eventmon.serverSocket.close()
                     break
                 except rcon.socket.error:
-                    print 'socket error in main_loop'
                     time.sleep(10)
                     self.rc.close()
                     self.eventmon.close()
@@ -218,11 +217,11 @@ class monitor3(object):
         while self.running:
             try:
                 newip = urllib.urlopen('http://whatismyip.org/').read()
-                print self.ip, newip
                 if newip != self.ip:
                     print 'SENT EMAIL ABOUT NEW IP'
                     self.mail('WAFFLES! WARNING!  IP CHANGE OCCURED!', 'Monitor\'s host has a new ip!\n %s' % newip)
                     self.ip = newip
+                    time.sleep(1000)
                 else:
                     time.sleep(1000)
             except Exception, error:
