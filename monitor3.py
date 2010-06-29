@@ -399,6 +399,7 @@ class monitor3(object):
             
         weapon = data[2]
         headshot = data[3]
+        #location of players on map with a +-10meter random error.  maybe used in future
         attacker_loc = data[5:8]
         victime_loc = data[7:]
 
@@ -420,7 +421,7 @@ class monitor3(object):
             streak = streak.substitute(victag=victim.tag, vicname=victim.name, streak=str(victim.streak), killertag=attacker.tag, killername=attacker.name).strip('\n') + ' all'
             self.rc.sndcmd(self.rc.SAY, streak)
         victim.death()
-        self.log.info('%s;onKill;%s;%s;%s;%s' % (str(datetime.date.today()), attacker.name, attacker.team, victim.name, victim.team))
+        self.log.info('%s;onKill;%s;%s;%s;%s' % (str(datetime.date.today()), attacker.name, attacker.team, victim.name, victim.team, weapon, headshot))
 
     def search_player(self, player, search):
         plist = []
