@@ -248,7 +248,7 @@ class monitor3(object):
         self.log.info('%s;onRoundOver;%s' % (str(time.time()), data[0]))
     
     #server.onRoundOverPlayers <end-of-round soldier info : player info block>
-    def onRoundOverTeamScores(self, data):
+    def onRoundoverteamscores(self, data):
         print 'teamscores', data
         pass
     
@@ -386,7 +386,6 @@ class monitor3(object):
     #player.onKill <killing soldier name: string> <killed soldier name: string> <weapon: string>
     #<headshot: boolean> <killer location: 3 x integer> <killed location: 3 x integes> 
     def PlayerKill(self, data):
-        print data
         try:
             attacker = self.players.getPlayer(data[0])
         except KeyError:
