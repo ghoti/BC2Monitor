@@ -424,7 +424,7 @@ class monitor3(object):
             streak = streak.substitute(victag=victim.tag, vicname=victim.name, streak=str(victim.streak), killertag=attacker.tag, killername=attacker.name).strip('\n') + ' all'
             self.rc.sndcmd(self.rc.SAY, streak)
         victim.death()
-        self.log.info('%s;onKill;%s;%s;%s;%s;%s;%s' % (str(datetime.date.today()), attacker.name, attacker.team, victim.name, victim.team, weapon, headshot))
+        self.log.info('%s;onKill;%s;%s;%s;%s;%s;%s' % (str(time.time()), attacker.name, attacker.team, victim.name, victim.team, weapon, headshot))
 
     def search_player(self, player, search):
         plist = []
