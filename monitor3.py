@@ -111,12 +111,12 @@ class monitor3(object):
         self.queue = Queue.Queue()
         self.chat = []
         self.kills = []
-        self.map = None
+        self.map = ''
         self.round = ['0', '0']
         self.pcount = 0
         self.serverrank = ''
         self.serverperc = ''
-        self.gametype = None
+        self.gametype = ''
         self.rc = rcon.RCon()
         self.eventmon = rcon.RCon()
 
