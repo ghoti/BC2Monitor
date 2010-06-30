@@ -242,7 +242,7 @@ class monitor3(object):
         pass
         
     #server.onRoundOver <winning team: Team ID>
-    def onRoundOver(self, data):
+    def onRoundover(self, data):
         print 'roundOver', data
         self.chat_queue('Round finished - Winners: %s' % data[0])
         self.log.info('%s;onRoundOver;%s' % (str(time.time()), data[0]))
