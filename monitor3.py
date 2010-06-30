@@ -116,7 +116,7 @@ class monitor3(object):
         self.pcount = 0
         self.serverrank = ''
         self.serverperc = ''
-        self.gametype = ''
+        self.gametype = 'CONQUEST'  #HACK ALErT
         self.rc = rcon.RCon()
         self.eventmon = rcon.RCon()
 
