@@ -74,10 +74,10 @@ class monitor3(object):
         self.gmail_pwd = config.get('email', 'pass')
         self.mail_to = config.get('email', 'send_to')
         
-        try:
-            self.ip = urllib.urlopen('http://whatismyip.org/').read()
-        except:
-            pass
+        #try:
+        #    self.ip = urllib.urlopen('http://whatismyip.org/').read()
+        #except:
+        #    pass
 
         self.PBMessages = (
             (re.compile(r'^PunkBuster Server: Running PB Scheduled Task \(slot #(?P<slot>\d+)\)\s+(?P<task>.*)$'), 'PBScheduledTask'),
@@ -135,9 +135,9 @@ class monitor3(object):
         eq = threading.Thread(target=self.event_queue)
         eq.name = 'events'
         eq.start()
-        hw = threading.Thread(target=self.host_watch)
-        hw.name = 'host_watch'
-        hw.start()
+        #hw = threading.Thread(target=self.host_watch)
+        #hw.name = 'host_watch'
+        #hw.start()
         self.do_first_run()
         threading.Thread(target=self.status).start()
         self.main_loop()
