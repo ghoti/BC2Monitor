@@ -116,7 +116,7 @@ class monitor3(object):
         self.pcount = 0
         self.serverrank = ''
         self.serverperc = ''
-        self.gametype = 'CONQUEST'  #HACK ALErT
+        self.gametype = 'None'
         self.rc = rcon.RCon()
         self.eventmon = rcon.RCon()
 
@@ -761,7 +761,7 @@ class monitor3(object):
             self.kills.append('%s teamkilled %s with a %s' % (attacker.name, victim.name, weapon))
         else:
             self.kills.append('%s killed %s with a %s' % (attacker.name, victim.name, weapon))
-
+    
     def do_first_run(self):
         '''
         Some initial recording of what's going on in the server
@@ -789,8 +789,11 @@ class monitor3(object):
                 self.players.getPlayer(name).eaguid = guid
                 self.players.getPlayer(name).squad = squad
                 threading.Thread(target=self.get_rank, args=[self.players.getPlayer(name)]).start()
+        #OK <serverName: string> <current playercount: integer> <max playercount: integer> 
+        #<current gamemode: string> <current map: string> 
+        #<roundsPlayed: integer> <roundsTotal: string> <scores: team scores> 
         data, response = rc.sndcmd(rc.SINFO)
-        if response and len(data) == 8:
+        if response and len(data) == 12:
             self.pcount = int(data[2])
             self.map = data[5].strip('Levels/')
             self.round[0] = data[6]
