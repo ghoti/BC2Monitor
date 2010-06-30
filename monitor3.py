@@ -232,23 +232,23 @@ class monitor3(object):
     player.onSpawn <soldier name: string> <kit: string> <weapons: 3 x string> <gadgets: 3 x string>
     '''        
     def PlayerSpawn(self, data):
-        #try:
-        #    player = data[0]
-        #except KeyError:
-        #    self.PlayerJoin(data[0])
-        #    time.sleep(.5)
-        #    player = self.players.getPlayer(data[0])
+        try:
+            player = data[0]
+        except KeyError:
+            self.PlayerJoin(data[0])
+            time.sleep(.5)
+            player = self.players.getPlayer(data[0])
+        player.kit = data[1]
         #perhaps adding a "spawn time" to a player object to track time alive, spawnkilling, etc?
-        pass
         
     #server.onRoundOver <winning team: Team ID>
-    def onRoundover(self, data):
+    def ServerRoundover(self, data):
         print 'roundOver', data
         self.chat_queue('Round finished - Winners: %s' % data[0])
         self.log.info('%s;onRoundOver;%s' % (str(time.time()), data[0]))
     
     #server.onRoundOverPlayers <end-of-round soldier info : player info block>
-    def onRoundoverteamscores(self, data):
+    def ServerRoundoverteamscores(self, data):
         print 'teamscores', data
         pass
     

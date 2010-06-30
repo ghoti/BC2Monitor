@@ -46,6 +46,7 @@ class player(object):
         self.ratio = 0.00
         self.streak = 0
         self.team = team
+        self.kit = '' 
         self.teamkills = 0
         self.teamkiller = None
         if ADMINS.has_key(name):
