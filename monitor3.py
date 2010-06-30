@@ -233,7 +233,7 @@ class monitor3(object):
     '''        
     def PlayerSpawn(self, data):
         try:
-            player = data[0]
+            player = self.players.getPlayer(data[0])
         except KeyError:
             self.PlayerJoin(data[0])
             time.sleep(.5)
@@ -759,7 +759,10 @@ class monitor3(object):
         elif attacker.team == victim.team:
             self.kills.append('%s teamkilled %s with a %s' % (attacker.name, victim.name, weapon))
         else:
-            self.kills.append('%s killed %s with a %s' % (attacker.name, victim.name, weapon))
+            if headshot == 'false':
+                self.kills.append('%s killed %s with a %s' % (attacker.name, victim.name, weapon))
+            else:
+                self.kills.append('%s blew %s\'s head off with a %s' % (attacker.name, victime.name, weapon))
     
     def do_first_run(self):
         '''
