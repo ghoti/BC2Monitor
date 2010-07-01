@@ -113,7 +113,7 @@ class monitor3(object):
         self.kills = []
         self.map = ''
         self.round = ['0', '0']
-        self.scores = ['0','0','0']
+        self.scores = [0,0,0]
         self.pcount = 0
         self.serverrank = ''
         self.serverperc = ''
@@ -339,7 +339,6 @@ class monitor3(object):
         try:
             data, response = self.rc.sndcmd(self.rc.PINFO, 'all')
             if response:
-                self.scores = [round(float(data[9]),0), round(float(data[10]),0), round(float(data[11]),0)]
                 #self.pcount = int(data[11])
                 if self.pcount != int(data[11]):
                     self.pcount = int(data[11])
@@ -350,6 +349,9 @@ class monitor3(object):
                                     return
                             self.write_to_DB(p)
                             self.players.disconnect(p.name)
+            data, response = self.rc.sndcmd(self.rc.SINFO)
+            if response:
+                self.scores = [int(round(float(data[9]),0)), int(round(float(data[10]),0)), int(round(float(data[11]),0))]
         except Exception, error:
             print 'error in count watch'
             print error
@@ -803,7 +805,7 @@ class monitor3(object):
             self.round[0] = data[6]
             self.round[1] = data[7]
             self.gametype = data[4].lower()
-            self.scores = [round(float(data[9]),0), round(float(data[10]),0), round(float(data[11]),0)]
+            self.scores = [int(round(float(data[9]),0)), int(round(float(data[10]),0)), int(round(float(data[11]),0))]
         rc.serverSocket.close()
         matchrank = re.compile('(?P<rank>\d+)(?P<ranksuf>\D{2})\s\(<span>(?P<percentile>\d+)(?P<percentsuf>\D{2})')
         content = urllib.urlopen("http://www.gametracker.com/server_info/68.232.162.167:19567/").read()
