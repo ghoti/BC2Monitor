@@ -339,7 +339,7 @@ class monitor3(object):
         try:
             data, response = self.rc.sndcmd(self.rc.PINFO, 'all')
             if response:
-                self.scores = [float(date[9]), float(data[10]), float(data[11])]
+                self.scores = [round(float(data[9]),0), round(float(data[10]),0), round(float(data[11]),0)]
                 #self.pcount = int(data[11])
                 if self.pcount != int(data[11]):
                     self.pcount = int(data[11])
@@ -803,7 +803,7 @@ class monitor3(object):
             self.round[0] = data[6]
             self.round[1] = data[7]
             self.gametype = data[4].lower()
-            self.scores = [float(data[9]) ,float(data[10]), float(data[11])]
+            self.scores = [round(float(data[9]),0), round(float(data[10]),0), round(float(data[11]),0)]
         rc.serverSocket.close()
         matchrank = re.compile('(?P<rank>\d+)(?P<ranksuf>\D{2})\s\(<span>(?P<percentile>\d+)(?P<percentsuf>\D{2})')
         content = urllib.urlopen("http://www.gametracker.com/server_info/68.232.162.167:19567/").read()
