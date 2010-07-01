@@ -113,6 +113,7 @@ class monitor3(object):
         self.kills = []
         self.map = ''
         self.round = ['0', '0']
+        self.scores = ['0','0','0']
         self.pcount = 0
         self.serverrank = ''
         self.serverperc = ''
@@ -338,6 +339,7 @@ class monitor3(object):
         try:
             data, response = self.rc.sndcmd(self.rc.PINFO, 'all')
             if response:
+                self.scores = [float(date[9]), float(data[10]), float(data[11])]
                 #self.pcount = int(data[11])
                 if self.pcount != int(data[11]):
                     self.pcount = int(data[11])
@@ -801,6 +803,7 @@ class monitor3(object):
             self.round[0] = data[6]
             self.round[1] = data[7]
             self.gametype = data[4].lower()
+            self.scores = [float(data[9]) ,float(data[10]), float(data[11])]
         rc.serverSocket.close()
         matchrank = re.compile('(?P<rank>\d+)(?P<ranksuf>\D{2})\s\(<span>(?P<percentile>\d+)(?P<percentsuf>\D{2})')
         content = urllib.urlopen("http://www.gametracker.com/server_info/68.232.162.167:19567/").read()
@@ -917,7 +920,8 @@ class monitor3(object):
         @monitor.route('/')
         def index():
             return flask.render_template('status.html', host=self.host, map=self.map_name(self.map) + ' ' + self.round[0] + '/' + self.round[1], gametype=(self.gametype[0].upper() + self.gametype[1:]),\
-                pcount=self.pcount, mapfile=self.map, kills=reversed(self.kills), chat=reversed(self.chat), team1=self.players.getTeam('1'), team2=self.players.getTeam('2'), rank=self.serverrank, percent=self.serverperc)
+                pcount=self.pcount, mapfile=self.map, kills=reversed(self.kills), chat=reversed(self.chat), team1=self.players.getTeam('1'), team2=self.players.getTeam('2'), rank=self.serverrank, percent=self.serverperc, \
+                scores=self.scores)
          
         @monitor.route('/pcount.html')
         def pcount():
