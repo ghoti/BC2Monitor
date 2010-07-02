@@ -69,11 +69,11 @@
 
         <table width="100%">
         <tr>
-        <td>Slot</td><td>Rank</td><td>Player</td><td>Kills</td><td>Deaths</td><td>Ratio</td><td>Streak</td></tr>
+        <td>Slot</td><td>Rank</td><td>Class</td><td>Player</td><td>Kills</td><td>Deaths</td><td>Ratio</td><td>Streak</td></tr>
         <tr><td colspan="6"></td></tr>
         <!-- <tr><td>1</td><td></td><td></td><td></td><td></td><td></td></tr> -->
         {% for p in team1 %}
-            <tr><td>{{loop.index}}</td><td>{{p.rank}}</td><td><img src="static/{{p.kit}}.png" /><a href="http://bfbcs.com/stats_pc/{{p.name}}" target="new">{{p.tag + ' ' + p.name}}</a></td><td>{{p.kills}}</td><td>{{p.deaths}}</td><td>{{'%.2f' % p.ratio}}</td><td>{{p.streak}}</td></tr>
+            <tr><td>{{loop.index}}</td><td>{{p.rank}}</td><td><img src="static/{{p.kit}}.png" /></td><td><a href="http://bfbcs.com/stats_pc/{{p.name}}" target="new">{{p.tag + ' ' + p.name}}</a></td><td>{{p.kills}}</td><td>{{p.deaths}}</td><td>{{'%.2f' % p.ratio}}</td><td>{{p.streak}}</td></tr>
         {% endfor %}
         </table>
     </div>
@@ -82,11 +82,11 @@
 
         <table width="100%">
         <tr>
-        <td>Slot</td><td>Rank</td><td>Player</td><td>Kills</td><td>Deaths</td><td>Ratio</td><td>Streak</td></tr>
+        <td>Slot</td><td>Rank</td><td>Class</td><td>Player</td><td>Kills</td><td>Deaths</td><td>Ratio</td><td>Streak</td></tr>
         <tr><td colspan="6"></td></tr>
         <!--<tr><td>1</td><td></td><td></td><td></td><td></td><td></td></tr>-->
         {% for p in team2 %}
-            <tr><td>{{loop.index}}</td><td>{{p.rank}}</td><td><img src="static/{{p.kit}}.png" /><a href="http://bfbcs.com/stats_pc/{{p.name}}" target="new">{{p.tag + ' ' + p.name}}</a></td><td>{{p.kills}}</td><td>{{p.deaths}}</td><td>{{'%.2f' % p.ratio}}</td><td>{{p.streak}}</td></tr>
+            <tr><td>{{loop.index}}</td><td>{{p.rank}}</td><td><img src="static/{{p.kit}}.png" /></td><td><a href="http://bfbcs.com/stats_pc/{{p.name}}" target="new">{{p.tag + ' ' + p.name}}</a></td><td>{{p.kills}}</td><td>{{p.deaths}}</td><td>{{'%.2f' % p.ratio}}</td><td>{{p.streak}}</td></tr>
         {% endfor %}
         </table>
     </div>
