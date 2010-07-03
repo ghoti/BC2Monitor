@@ -24,6 +24,12 @@ from email.MIMEMultipart import MIMEMultipart
 from email.MIMEBase import MIMEBase
 from email.MIMEText import MIMEText
 
+import flask
+#from cherrypy import wsgiserver
+from tornado.wsgi import WSGIContainer
+from tornado.httpserver import HTTPServer
+from tornado.ioloop import IOLoop
+
 import clients
 import rcon
 import subprocess
@@ -912,12 +918,8 @@ class monitor3(object):
         #self.rc.sndcmd(self.rc.SAY, '\'Map not found or map not supported by gametype, try again!\' player \'%s\'' % player.name)
         #self.rc.sndcmd(self.rc.SAY, '\'Sorry SOX, that map doesnt exist or wont work here... TRY AGAIN!!! :-p\' player \'%s\'' % player.name)
 
-    def status(self):
-        import flask
-        from cherrypy import wsgiserver
-         
+    def status(self):         
         monitor = flask.Flask(__name__)
-        
          
         @monitor.route('/')
         def index():
@@ -1154,13 +1156,17 @@ class monitor3(object):
 #        while self.running:
 #            bottle.run(server=bottle.CherryPyServer, host=self.webip, port=self.webport)
 #            #bottle.run(host='192.168.1.103', port=80)
-        d = wsgiserver.WSGIPathInfoDispatcher({'/':monitor})
-        self.server = wsgiserver.CherryPyWSGIServer(('0.0.0.0', 8088), d)
-        try:
-            self.server.start()
-        except:
-            self.server.stop()
-            self.running = False
+        #d = wsgiserver.WSGIPathInfoDispatcher({'/':monitor})
+        #self.server = wsgiserver.CherryPyWSGIServer(('0.0.0.0', 8088), d)
+        #try:
+        #    self.server.start()
+        #except:
+        #    self.server.stop()
+        #    self.running = False
+        http_server = HTTPServer(WSGIContainer(monitor))
+        http_server.listen(5000)
+        while self.running:
+            IOLoop.instance().start()
                 
     def stop_status(self):
         self.server.stop()
