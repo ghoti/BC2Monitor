@@ -17,14 +17,20 @@ import time
 import threading
 import urllib
 import smtplib
+import socket
 
 from email.MIMEMultipart import MIMEMultipart
 from email.MIMEBase import MIMEBase
 from email.MIMEText import MIMEText
 
+import flask
+from tornado.wsgi import WSGIContainer
+from tornado.httpserver import HTTPServer
+from tornado.ioloop import IOLoop
+
 import clients
 import rcon
-import status
+import subprocess
 
 #import bottle
 
@@ -138,7 +144,7 @@ class monitor3(object):
         #hw.name = 'host_watch'
         #hw.start()
         self.do_first_run()
-        threading.Thread(target=status.status, args=[self.webip,self.webport]).start()
+        threading.Thread(target=self.status).start()
         self.main_loop()
 
     def main_loop(self):
@@ -189,7 +195,7 @@ class monitor3(object):
                 except KeyboardInterrupt:
                     print 'Keyboard interrupt caught, exiting...'
                     print 'There may be a delay while we close the network connections...'
-                    status.stop_status()
+                    self.stop_status()
                     self.running = False
                     os.remove(os.path.join('', '.monitor.lock'))
 
@@ -752,7 +758,7 @@ class monitor3(object):
             if headshot == 'false':
                 self.kills.append('%s killed %s with a %s' % (attacker.name, victim.name, weapon))
             else:
-                self.kills.append('%s blew %s\'s head off with a %s' % (attacker.name, victim.name, weapon))
+                self.kills.append('%s blew %s\'s head off with a %s' % (attacker.name, victime.name, weapon))
     
     def do_first_run(self):
         '''
@@ -896,7 +902,62 @@ class monitor3(object):
 #                        self.rc.sndcmd(self.rc.ROTATE)
 #                        return
         #self.rc.sndcmd(self.rc.SAY, '\'Map not found or map not supported by gametype, try again!\' player \'%s\'' % player.name)
-        #self.rc.sndcmd(self.rc.SAY, '\'Sorry SOX, that map doesnt exist or wont work here... TRY AGAIN!!! :-p\' player \'%s\'' % player.name)        
+        #self.rc.sndcmd(self.rc.SAY, '\'Sorry SOX, that map doesnt exist or wont work here... TRY AGAIN!!! :-p\' player \'%s\'' % player.name)
+
+    def status(self):         
+        monitor = flask.Flask(__name__)
+         
+        @monitor.route('/')
+        def index():
+            return flask.render_template('status.html', host=self.host, map=self.map_name(self.map) + ' ' + self.round[0] + '/' + self.round[1], gametype=(self.gametype[0].upper() + self.gametype[1:]),\
+                pcount=self.pcount, mapfile=self.map, kills=reversed(self.kills), chat=reversed(self.chat), team1=self.players.getTeam('1'), team2=self.players.getTeam('2'), rank=self.serverrank, percent=self.serverperc, \
+                scores=self.scores)
+         
+        @monitor.route('/pcount.html')
+        def pcount():
+            return '<html>\n<head>\n<title></title>\n</head>\n<body style="color: #ffffff; background-color: #000000;  font-size: 12px; font-family: Verdana, Arial, Helvetica, sans-serif;">\n \
+                %s / 32\n</body>\n</html>' % self.pcount
+                
+        @monitor.route('/chatlog/')
+        @monitor.route('/chatlog/<search>')
+        def chatlog(search=None):
+            f = open('chatlog.txt', 'r')
+            chat = ''
+            if not search:
+                for line in f:
+                    chat += line + '<br>'
+            else:
+                for line in f:
+                    if line.count(search):
+                        chat += line + '<br>'
+            f.close()
+            return chat
+        
+        @monitor.route('/log/')
+        def log():
+            f = open('logfile.txt', 'r')
+            log = '' 
+            for line in f:
+                log += line + '<br>'
+            f.close()
+            return log
+        
+        @monitor.route('/chattail/')
+        def tailchat():
+            tail = ''
+            for line in subprocess.Popen(['tail', '-n 10', '/home/ghoti/BC2Monitor/chatlog.txt'], shell=False, stdout=subprocess.PIPE).communicate()[0].split('\n'):
+                tail += line + '<br>'
+            return tail
+         
+        http_server = HTTPServer(WSGIContainer(monitor))
+        http_server.listen(8088)
+        while self.running:
+            IOLoop.instance().start()
+                
+    def stop_status(self):
+        self.server.stop()
+        self.running = False
+        
 
 if __name__ == '__main__':
     monitor3()
