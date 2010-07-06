@@ -17,7 +17,6 @@ import time
 import threading
 import urllib
 import smtplib
-import socket
 
 from email.MIMEMultipart import MIMEMultipart
 from email.MIMEBase import MIMEBase
@@ -758,7 +757,7 @@ class monitor3(object):
             if headshot == 'false':
                 self.kills.append('%s killed %s with a %s' % (attacker.name, victim.name, weapon))
             else:
-                self.kills.append('%s blew %s\'s head off with a %s' % (attacker.name, victime.name, weapon))
+                self.kills.append('%s blew %s\'s head off with a %s' % (attacker.name, victim.name, weapon))
     
     def do_first_run(self):
         '''
