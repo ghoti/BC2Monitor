@@ -6,7 +6,6 @@ import datetime
 import json
 import linecache
 import logging
-import operator
 import os
 import Queue
 import random                                                                                           
@@ -542,23 +541,11 @@ class monitor3(object):
                     self.rc.sndcmd(self.rc.PUNISH, punish.name)
                     
             elif chat.lower().startswith('!kick') and player.power >= player.ADMIN:
-                m = re.match(self.command, chat)
-                parms = m.group('parms').split()
-                if len(parms) == 1:
-                    reason = 'ADMIN DECISION'
-                    ktime = '5'
-                elif len(parms) == 2:
-                    reason = 'ADMIN DECISION'
-                    ktime = parms[1]
-                else:
-                    reason = ''
-                    for part in parms[2:]:
-                        reason = reason + part + ' '
-                    reason = reason.strip()
-                    ktime = parms[1]
-                kick = self.search_player(player, parms[0])
-                if kick:
-                    self.rc.sndcmd(self.rc.KICK, '\"%s\" \"%s\" \"%s\"\'' % (kick.name, ktime, reason))
+                m = re.match(r'^(?P<name>.*)\s(?P<time>[0-9]{2})\s(?P<reason>.*)', chat)
+                if m:
+                    kick = self.search_player(player, m.group('name'))
+                    if kick:
+                        self.rc.sndcmd(self.rc.KICK, '\"%s\" \"%s\" \"%s\"\'' % (m.group('name'), m.group('time'), m.group('reason')))
 
             elif chat.lower().startswith('!ban') and player.power >= player.SUPER:
                 m = re.match(self.command, chat)
