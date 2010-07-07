@@ -134,7 +134,7 @@ class monitor3(object):
         with open('banlist.txt', 'r') as f:
             for line in f:
                 if line:
-                    self.badwords.append(line.strip('\n'))
+                    self.banwords.append(line.strip('\n'))
         
         eq = threading.Thread(target=self.event_queue)
         eq.name = 'events'
