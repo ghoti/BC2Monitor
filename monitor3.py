@@ -546,14 +546,14 @@ class monitor3(object):
                     self.rc.sndcmd(self.rc.PUNISH, punish.name)
                     
             elif chat.lower().startswith('!kick') and player.power >= player.ADMIN:
-                m = re.match(r'^(?P<name>.*)\s(?P<time>[0-9]{2})\s(?P<reason>.*)', chat)
+                m = re.match(r'^(?P<name>.*)\s(?P<time>[0-9]{2})\s(?P<reason>.*)', chat, re.I)
                 if m:
                     kick = self.search_player(player, m.group('name'))
                     if kick:
                         self.rc.sndcmd(self.rc.KICK, '\"%s\" \"%s\" \"%s\"\'' % (m.group('name'), m.group('time'), m.group('reason')))
 
             elif chat.lower().startswith('!ban') and player.power >= player.SUPER:
-                m = re.match(self.command, chat)
+                m = re.match(self.command, chat, re.I)
                 parms = m.group('parms').split()
                 if len(parms) > 1:
                     r = parms[1:]
