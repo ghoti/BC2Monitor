@@ -468,8 +468,7 @@ class monitor3(object):
             for word in self.badwords:
                 if re.search('\\b' + word + '\\b', chat, re.I):
                     if player.warning:
-                        data, response = self.rc.sndcmd(self.rc.KICK, '\"%s\" \"10\" \"That language is not acceptable here.\"\'' % player.name)
-                        print data
+                        self.rc.sndcmd(self.rc.KICK, '\"%s\" \"10\" \"That language is not acceptable here.\"\'' % player.name)
                         break
                     else:
                         self.rc.sndcmd(self.rc.SAY, '\'%s: THAT LANGUAGE WILL NOT BE TOLERATED HERE.  THIS IS YOUR ONLY WARNING!!!\' \
@@ -547,13 +546,16 @@ class monitor3(object):
                     self.rc.sndcmd(self.rc.PUNISH, punish.name)
                     
             elif chat.lower().startswith('!kick') and player.power >= player.ADMIN:
+                print chat
                 kickcommand = re.compile(r'^(?P<command>![^\s]{2,})\s(?P<name>.*)\s(?P<time>[0-9]{2})\s(?P<reason>.*)', re.I)
                 m = re.match(kickcommand, chat)
                 if m:
+                    print m.group()
                     kick = self.search_player(player, m.group('name'))
                     print kick.name
                     if kick:
-                        self.rc.sndcmd(self.rc.KICK, '\"%s\" \"%s\" \"%s\""' % (kick.name, m.group('time'), m.group('reason')))
+                        #self.rc.sndcmd(self.rc.KICK, '\"%s\" \"10\" \"That language is not acceptable here.\"\'' % player.name)
+                        self.rc.sndcmd(self.rc.KICK, '\"%s\" \"%s\" \"%s\"\'' % (kick.name, m.group('time'), m.group('reason')))
 
             elif chat.lower().startswith('!ban') and player.power >= player.SUPER:
                 m = re.match(self.command, chat, re.I)
