@@ -547,7 +547,7 @@ class monitor3(object):
                     
             elif chat.lower().startswith('!kick') and player.power >= player.ADMIN:
                 print chat
-                kickcommand = re.compile(r'^(?P<command>![^\s]{2,})\s(?P<name>.*)\s(?P<time>[0-9]{2})\s(?P<reason>.*)', re.I)
+                kickcommand = re.compile(r'^(?P<command>![^\s]{2,})\s(?P<name>.*)\s(?P<time>[0-9]{1,2})\s(?P<reason>.*)', re.I)
                 m = re.match(kickcommand, chat)
                 if m:
                     print m.group()
