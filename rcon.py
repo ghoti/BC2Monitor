@@ -120,7 +120,7 @@ class RCon(object):
         elif command == self.PINFO:  return 'admin.listPlayers'
         elif command == self.SINFO:  return 'serverInfo'
         elif command == self.SAY:   return 'admin.say'
-        elif command == self.KICK:  return 'punkBuster.pb_sv_command \'pb_sv_Kick'
+        elif command == self.KICK:  return 'punkBuster.pb_sv_command "pb_sv_Kick'
         elif command == self.PUNISH:    return 'admin.killPlayer'
         elif command == self.BAN:   return 'punkBuster.pb_sv_command "pb_sv_banGUID'
         elif command == self.FF:    return 'vars.friendlyFire'
