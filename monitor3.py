@@ -570,9 +570,9 @@ class monitor3(object):
                     if ban:
                         if ban.pbid:
                             if ban.ip:
-                                self.rc.sndcmd(self.rc.BAN, '\"%s\" \"%s\" \"%s\" \"%s\""' % (ban.pbid, ban.name, ban.ip, reason))
+                                self.rc.sndcmd(self.rc.BAN, '\"%s\" \"%s\" \"%s\" \"%s\"\'' % (ban.pbid, ban.name, ban.ip, reason))
                             else:
-                                self.rc.sndcmd(self.rc.BAN, '\"%s\" \"%s\" \"???\" \"%s\""' % (ban.pbid, ban.name, reason))
+                                self.rc.sndcmd(self.rc.BAN, '\"%s\" \"%s\" \"???\" \"%s\"\'' % (ban.pbid, ban.name, reason))
                 else:
                     self.rc.sndcmd(self.rc.SAY, '\'A reason is required to BAN a player\' player \'%s\'' %
                         player.name)
