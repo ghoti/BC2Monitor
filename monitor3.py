@@ -269,6 +269,7 @@ class monitor3(object):
     def PlayerKicked(self, data):
         self.chat_queue(data[1])
         self.logger.info(data[1])
+        self.rc.sndcmd(self.rc.SAY, '\'%s was kicked from the server\' all' % data[0])
         
     def PlayerLeave(self, data):
         try:
