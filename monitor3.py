@@ -555,7 +555,7 @@ class monitor3(object):
                     kick = self.search_player(player, m.group('name'))
                     print kick.name
                     if kick:
-                        #self.rc.sndcmd(self.rc.KICK, '\"%s\" \"10\" \"That language is not acceptable here.\"\'' % player.name)
+                        
                         self.rc.sndcmd(self.rc.KICK, '\"%s\" \"%s\" \"%s\"\'' % (kick.name, m.group('time'), m.group('reason')))
 
             elif chat.lower().startswith('!ban') and player.power >= player.SUPER:
@@ -571,6 +571,7 @@ class monitor3(object):
                     if ban:
                         if ban.pbid:
                             if ban.ip:
+                                #self.rc.sndcmd(self.rc.KICK, '\"%s\" \"10\" \"That language is not acceptable here.\"\'' % player.name)
                                 self.rc.sndcmd(self.rc.BAN, '\"%s\" \"%s\" \"%s\" \"%s\"\'' % (ban.pbid, ban.name, ban.ip, reason))
                             else:
                                 self.rc.sndcmd(self.rc.BAN, '\"%s\" \"%s\" \"???\" \"%s\"\'' % (ban.pbid, ban.name, reason))
@@ -932,6 +933,7 @@ class monitor3(object):
                 for line in f:
                     chat += line + '<br>'
             else:
+                search = search.replace('+', ' ')
                 for line in f:
                     if line.count(search):
                         chat += line + '<br>'
