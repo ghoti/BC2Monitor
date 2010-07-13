@@ -560,7 +560,7 @@ class monitor3(object):
                         
                         self.rc.sndcmd(self.rc.KICK, '\"%s\" \"%s\" \"%s\"\'' % (kick.name, m.group('time'), m.group('reason')))
 
-            elif chat.lower().startswith('!ban') and player.power >= player.SUPER:
+            elif chat.lower().startswith('!ban') and player.power == player.SUPER:
                 m = re.match(self.command, chat, re.I)
                 parms = m.group('parms').split()
                 print parms
