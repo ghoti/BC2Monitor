@@ -484,10 +484,10 @@ class monitor3(object):
                 if re.search('\\b' + word + '\\b', chat, re.I):
                     if player.pbid:
                         if player.ip:
-                            self.rc.sndcmd(self.rc.BAN, '\"%s\" \"%s\" \"%s\" \"We do not tolerate that language here\""' % (player.pbid, player.name, player.ip))
+                            self.rc.sndcmd(self.rc.BAN, '\"%s\" \"%s\" \"%s\" \"We do not tolerate that language here\"\'' % (player.pbid, player.name, player.ip))
                             break
                         else:
-                            self.rc.sndcmd(self.rc.BAN, '\"%s\" \"%s\" \"???\" \"We do not tolerate that language here\""' % (player.pbid, player.name))
+                            self.rc.sndcmd(self.rc.BAN, '\"%s\" \"%s\" \"???\" \"We do not tolerate that language here\"\'' % (player.pbid, player.name))
                             break
             
             #display command help to player, general help, or specific help available!
