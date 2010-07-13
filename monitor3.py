@@ -586,6 +586,9 @@ class monitor3(object):
                 m = re.match(self.command, chat)
                 self.map_name_easy(player, m.group('parms'))
             
+            elif chat.lower().startswith('!rotate') and player.power >= player.MOD:
+                self.rc.sndcmd(self.rc.ROTATE)
+            
             elif chat.lower().startswith('!gametype') and player.power >= player.MOD:
                 m = re.match(self.command, chat)
                 if m and m.group('parms').lower().count('rush'):
