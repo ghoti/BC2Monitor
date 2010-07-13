@@ -563,6 +563,7 @@ class monitor3(object):
             elif chat.lower().startswith('!ban') and player.power >= player.SUPER:
                 m = re.match(self.command, chat, re.I)
                 parms = m.group('parms').split()
+                print parms
                 if len(parms) > 1:
                     r = parms[1:]
                     reason = ''
