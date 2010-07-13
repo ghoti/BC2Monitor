@@ -81,6 +81,8 @@ class monitor3(object):
         #    self.ip = urllib.urlopen('http://whatismyip.org/').read()
         #except:
         #    pass
+        
+        self.sqlerror = False
 
         self.PBMessages = (
             (re.compile(r'^PunkBuster Server: Running PB Scheduled Task \(slot #(?P<slot>\d+)\)\s+(?P<task>.*)$'), 'PBScheduledTask'),
@@ -679,13 +681,13 @@ class monitor3(object):
                                            times_seen=1, first_seen=today, last_seen=today)
         except Exception, error:
             print 'error in writing_db'
-            print error            
+            print error
+            self.mail('ZOMG SQL ERROR', 'WARNING.  WAFFLES.\n There was a problem with the database.\n\n %s' % error)            
         finally:
             try:
                 sql.close()
             except:
                 pass
-
     def has_been_seen(self, player):
         try:
             sql = sqlalchemy.create_engine("mysql://%s:%s@%s/%s" % (self.dbuser, self.dbpasswd, self.dbhost, self.dbname),
@@ -699,6 +701,7 @@ class monitor3(object):
         except Exception, error:
             print 'error in has_been_seen'
             print error
+            self.mail('ZOMG SQL ERROR', 'WARNING.  WAFFLES.\n There was a problem with the database.\n\n %s' % error)
         finally:
             try:
                 sql.close()
