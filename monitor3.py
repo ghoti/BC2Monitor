@@ -572,9 +572,13 @@ class monitor3(object):
                         if ban.pbid:
                             if ban.ip:
                                 #self.rc.sndcmd(self.rc.KICK, '\"%s\" \"10\" \"That language is not acceptable here.\"\'' % player.name)
-                                self.rc.sndcmd(self.rc.BAN, '\"%s\" \"%s\" \"%s\" \"%s\"\'' % (ban.pbid, ban.name, ban.ip, reason))
+                                data, response = self.rc.sndcmd(self.rc.BAN, '\"%s\" \"%s\" \"%s\" \"%s\"\'' % (ban.pbid, ban.name, ban.ip, reason))
+                                if response:
+                                    print 'full ban', response
                             else:
-                                self.rc.sndcmd(self.rc.BAN, '\"%s\" \"%s\" \"???\" \"%s\"\'' % (ban.pbid, ban.name, reason))
+                                data, response = self.rc.sndcmd(self.rc.BAN, '\"%s\" \"%s\" \"???\" \"%s\"\'' % (ban.pbid, ban.name, reason))
+                                if response:
+                                    print 'no ip ban', reponse
                 else:
                     self.rc.sndcmd(self.rc.SAY, '\'A reason is required to BAN a player\' player \'%s\'' %
                         player.name)
