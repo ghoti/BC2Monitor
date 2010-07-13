@@ -929,21 +929,24 @@ class monitor3(object):
             return '<html>\n<head>\n<title></title>\n</head>\n<body style="color: #ffffff; background-color: #000000;  font-size: 12px; font-family: Verdana, Arial, Helvetica, sans-serif;">\n \
                 %s / 32\n</body>\n</html>' % self.pcount
                 
-        @monitor.route('/chatlog/')
-        @monitor.route('/chatlog/<search>')
+        @monitor.route('/chatlog/', methods=['GET', 'POST'])
         def chatlog(search=None):
-            f = open('chatlog.txt', 'r')
-            chat = ''
-            if not search:
-                for line in f:
-                    chat += line + '<br>'
-            else:
-                search = search.replace('+', ' ')
-                for line in f:
-                    if line.count(search):
-                        chat += line + '<br>'
-            f.close()
-            return chat
+            chat = []
+            if flask.request.method == 'POST':
+                f = open('chatlog.txt', 'r')
+                if flask.request.form['player']:
+                    for line in f:
+                        if line.count(flask.request.form['player']):
+                            chat.append(line)
+                else:
+                    for line in f:
+                        chat.append(line)
+                f.close()
+                if not chat:
+                    chat.append('Search Term not found in log...')
+                    
+                return flask.render_template('chatlog.html', player=chat)
+            return flask.render_template('chatlog.html', player = chat)
         
         @monitor.route('/log/')
         def log():

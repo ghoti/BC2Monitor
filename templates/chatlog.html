@@ -1,0 +1,17 @@
+<html>
+<body>
+Enter a term to search all chat for (name, word, date, waffles)<br>
+or leave blank to see all chat<br>
+<form action="{{ url_for('chatlog') }}" method=POST>
+<input type=text size=30 name=player>
+<input type=submit value=Submit>
+</form>
+<p>
+{% if player %}
+    {% for line in player %}
+		{{line}}<br>
+	{% endfor %}
+{% endif %}    
+</body>
+</html>
+
