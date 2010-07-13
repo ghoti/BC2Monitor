@@ -110,7 +110,7 @@ class monitor3(object):
                         '!map':'Required argument [map].  Changes map to [map] with immediate effect.', '!restart':'Restarts current map', '!kick':'Required arguments [player],[time],and [reason] Kicks [player] for [time] for [reason]',
                         '!ban':'Required arguments [player] and [reason].  Bans [player] for [reason]', '!gametype':'Required argument [gametype].  Changes server to [gametype] with immediate effect.'}
         
-        self.command = re.compile(r'^(?P<cid>\'[^\']{2,}\'|[0-9]+|[^\s]{2,}|@[0-9]+)\s?(?P<parms>.*)$')
+        self.command = re.compile(r'^(?P<cid>\'[^\']{2,}\'|[0-9]+|[^\s]{2,}|@[0-9]+)\s?(?P<parms>.*)$', re.I)
 
         self.players = clients.clients()
         self.queue = Queue.Queue()
@@ -559,8 +559,8 @@ class monitor3(object):
                     if kick:
                         self.rc.sndcmd(self.rc.KICK, '\"%s\" \"%s\" \"%s\"\'' % (kick.name, m.group('time'), m.group('reason')))
 
-            elif re.search('!ban', chat, re.I) and player.power >= player.ADMIN:
-                m = re.match(self.command, chat, re.I)
+            elif re.search('!ban', chat, re.I) and player.power > player.ADMIN:
+                m = re.match(self.command, chat)
                 parms = m.group('parms').split()
                 print chat, parms
                 if len(parms) > 1:
