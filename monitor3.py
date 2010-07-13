@@ -677,7 +677,7 @@ class monitor3(object):
         except Exception, error:
             print 'error in writing_db'
             print error
-            self.mail('ZOMG SQL ERROR', 'WARNING.  WAFFLES.\n There was a problem with the database.\n\n %s' % error)            
+            #self.mail('ZOMG SQL ERROR', 'WARNING.  WAFFLES.\n There was a problem with the database.\n\n %s' % error)            
         finally:
             try:
                 sql.close()
@@ -696,7 +696,7 @@ class monitor3(object):
         except Exception, error:
             print 'error in has_been_seen'
             print error
-            self.mail('ZOMG SQL ERROR', 'WARNING.  WAFFLES.\n There was a problem with the database.\n\n %s' % error)
+            #self.mail('ZOMG SQL ERROR', 'WARNING.  WAFFLES.\n There was a problem with the database.\n\n %s' % error)
         finally:
             try:
                 sql.close()
