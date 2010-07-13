@@ -464,6 +464,9 @@ class Flask(_PackageBoundObject):
         .. versionchanged:: 0.2
            `view_func` parameter added.
 
+        .. versionchanged:: 0.6
+           `OPTIONS` is added automatically as method.
+
         :param rule: the URL rule as string
         :param endpoint: the endpoint for the registered URL rule.  Flask
                          itself assumes the name of the view function as
@@ -471,15 +474,27 @@ class Flask(_PackageBoundObject):
         :param view_func: the function to call when serving a request to the
                           provided endpoint
         :param options: the options to be forwarded to the underlying
-                        :class:`~werkzeug.routing.Rule` object
+                        :class:`~werkzeug.routing.Rule` object.  A change
+                        to Werkzeug is handling of method options.  methods
+                        is a list of methods this rule should be limited
+                        to (`GET`, `POST` etc.).  By default a rule
+                        just listens for `GET` (and implicitly `HEAD`).
+                        Starting with Flask 0.6, `OPTIONS` is implicitly
+                        added and handled by the standard request handling.
         """
         if endpoint is None:
             assert view_func is not None, 'expected view func if endpoint ' \
                                           'is not provided.'
             endpoint = view_func.__name__
         options['endpoint'] = endpoint
-        options.setdefault('methods', ('GET',))
-        self.url_map.add(Rule(rule, **options))
+        methods = options.pop('methods', ('GET',))
+        provide_automatic_options = False
+        if 'OPTIONS' not in methods:
+            methods = tuple(methods) + ('OPTIONS',)
+            provide_automatic_options = True
+        rule = Rule(rule, methods=methods, **options)
+        rule.provide_automatic_options = provide_automatic_options
+        self.url_map.add(rule)
         if view_func is not None:
             self.view_functions[endpoint] = view_func
 
@@ -539,8 +554,10 @@ class Flask(_PackageBoundObject):
 
         :param rule: the URL rule as string
         :param methods: a list of methods this rule should be limited
-                        to (``GET``, ``POST`` etc.).  By default a rule
-                        just listens for ``GET`` (and implicitly ``HEAD``).
+                        to (`GET`, `POST` etc.).  By default a rule
+                        just listens for `GET` (and implicitly `HEAD`).
+                        Starting with Flask 0.6, `OPTIONS` is implicitly
+                        added and handled by the standard request handling.
         :param subdomain: specifies the rule for the subdomain in case
                           subdomain matching is in use.
         :param strict_slashes: can be used to disable the strict slashes
@@ -650,7 +667,15 @@ class Flask(_PackageBoundObject):
         try:
             if req.routing_exception is not None:
                 raise req.routing_exception
-            return self.view_functions[req.endpoint](**req.view_args)
+            rule = req.url_rule
+            # if we provide automatic options for this URL and the
+            # request came with the OPTIONS method, reply automatically 
+            if rule.provide_automatic_options and req.method == 'OPTIONS':
+                rv = self.response_class()
+                rv.allow.update(rule.methods)
+                return rv
+            # otherwise dispatch to the handler for that endpoint
+            return self.view_functions[rule.endpoint](**req.view_args)
         except HTTPException, e:
             return self.handle_http_exception(e)
 
@@ -707,6 +732,10 @@ class Flask(_PackageBoundObject):
         before it's sent to the WSGI server.  By default this will
         call all the :meth:`after_request` decorated functions.
 
+        .. versionchanged:: 0.5
+           As of Flask 0.5 the functions registered for after request
+           execution are called in reverse order of registration.
+
         :param response: a :attr:`response_class` object.
         :return: a new response object or the same, has to be an
                  instance of :attr:`response_class`.
@@ -717,9 +746,9 @@ class Flask(_PackageBoundObject):
             self.save_session(ctx.session, response)
         funcs = ()
         if mod and mod in self.after_request_funcs:
-            funcs = chain(funcs, self.after_request_funcs[mod])
+            funcs = reversed(self.after_request_funcs[mod])
         if None in self.after_request_funcs:
-            funcs = chain(funcs, self.after_request_funcs[None])
+            funcs = chain(funcs, reversed(self.after_request_funcs[None]))
         for handler in funcs:
             response = handler(response)
         return response
