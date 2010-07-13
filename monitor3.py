@@ -563,7 +563,7 @@ class monitor3(object):
             elif chat.lower().startswith('!ban') and player.power == player.SUPER:
                 m = re.match(self.command, chat, re.I)
                 parms = m.group('parms').split()
-                print parms
+                print chat, parms
                 if len(parms) > 1:
                     r = parms[1:]
                     reason = ''
@@ -581,7 +581,7 @@ class monitor3(object):
                             else:
                                 data, response = self.rc.sndcmd(self.rc.BAN, '\"%s\" \"%s\" \"???\" \"%s\"\'' % (ban.pbid, ban.name, reason))
                                 if response:
-                                    print 'no ip ban', reponse
+                                    print 'no ip ban', response
                 else:
                     self.rc.sndcmd(self.rc.SAY, '\'A reason is required to BAN a player\' player \'%s\'' %
                         player.name)
