@@ -936,7 +936,7 @@ class monitor3(object):
                 f = open('chatlog.txt', 'r')
                 if flask.request.form['player']:
                     for line in f:
-                        if line.count(flask.request.form['player']):
+                        if re.search(flask.request.form['player'], line, re.I):
                             chat.append(line)
                 else:
                     for line in f:
