@@ -1,0 +1,11 @@
+<html>
+<body>
+{% if player %}
+    {% for line in player %}
+        {{line}}<br>
+    {% endfor %}
+{% else %}
+    There was no chat found... :(
+{% endif %}
+</body>
+</html>

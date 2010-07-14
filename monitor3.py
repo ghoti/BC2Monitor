@@ -948,6 +948,17 @@ class monitor3(object):
                 return flask.render_template('chatlog.html', player=chat)
             return flask.render_template('chatlog.html', player = chat)
         
+        @monitor.route('/chatlog/<player>')
+        def search(player):
+            f = open('chatlog.txt', 'r')
+            chat = []
+            search = search.replace('%20', ' ')
+            for line in f:
+                if re.search(player, line, re.I):
+                    chat.append(line)
+            f.close()
+            return flask.render_template('playerchat.html', player = chat)
+        
         @monitor.route('/log/')
         def log():
             f = open('logfile.txt', 'r')
