@@ -952,7 +952,7 @@ class monitor3(object):
         def search(player):
             f = open('chatlog.txt', 'r')
             chat = []
-            search = search.replace('%20', ' ')
+            search = search.replace('@', ' ')
             for line in f:
                 if re.search(player, line, re.I):
                     chat.append(line)
