@@ -13,6 +13,7 @@ from werkzeug import Request as RequestBase, Response as ResponseBase, \
     cached_property
 
 from .helpers import json, _assert_have_json
+from .globals import _request_ctx_stack
 
 
 class Request(RequestBase):
@@ -42,6 +43,13 @@ class Request(RequestBase):
     routing_exception = None
 
     @property
+    def max_content_length(self):
+        """Read-only view of the `MAX_CONTENT_LENGTH` config key."""
+        ctx = _request_ctx_stack.top
+        if ctx is not None:
+            return ctx.app.config['MAX_CONTENT_LENGTH']
+
+    @property
     def endpoint(self):
         """The endpoint that matched the request.  This in combination with
         :attr:`view_args` can be used to reconstruct the same or a
@@ -54,8 +62,8 @@ class Request(RequestBase):
     @property
     def module(self):
         """The name of the current module"""
-        if self.endpoint and '.' in self.endpoint:
-            return self.endpoint.rsplit('.', 1)[0]
+        if self.url_rule and '.' in self.url_rule.endpoint:
+            return self.url_rule.endpoint.rsplit('.', 1)[0]
 
     @cached_property
     def json(self):

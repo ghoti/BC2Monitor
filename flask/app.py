@@ -193,7 +193,8 @@ class Flask(_PackageBoundObject):
         'PERMANENT_SESSION_LIFETIME':           timedelta(days=31),
         'USE_X_SENDFILE':                       False,
         'LOGGER_NAME':                          None,
-        'SERVER_NAME':                          None
+        'SERVER_NAME':                          None,
+        'MAX_CONTENT_LENGTH':                   None
     })
 
     def __init__(self, import_name, static_path=None):
@@ -271,11 +272,14 @@ class Flask(_PackageBoundObject):
         #:    app.url_map.converters['list'] = ListConverter
         self.url_map = Map()
 
-        # if there is a static folder, register it for the application.
-        if self.has_static_folder:
-            self.add_url_rule(self.static_path + '/<path:filename>',
-                              endpoint='static',
-                              view_func=self.send_static_file)
+        # register the static folder for the application.  Do that even
+        # if the folder does not exist.  First of all it might be created
+        # while the server is running (usually happens during development)
+        # but also because google appengine stores static files somewhere
+        # else when mapped with the .yml file.
+        self.add_url_rule(self.static_path + '/<path:filename>',
+                          endpoint='static',
+                          view_func=self.send_static_file)
 
         #: The Jinja2 environment.  It is created from the
         #: :attr:`jinja_options`.
@@ -340,7 +344,11 @@ class Flask(_PackageBoundObject):
 
     def update_template_context(self, context):
         """Update the template context with some commonly used variables.
-        This injects request, session and g into the template context.
+        This injects request, session, config and g into the template
+        context as well as everything template context processors want
+        to inject.  Note that the as of Flask 0.6, the original values
+        in the context will not be overriden if a context processor
+        decides to return a value with the same key.
 
         :param context: the context as a dictionary that is updated in place
                         to add extra variables.
@@ -349,8 +357,13 @@ class Flask(_PackageBoundObject):
         mod = _request_ctx_stack.top.request.module
         if mod is not None and mod in self.template_context_processors:
             funcs = chain(funcs, self.template_context_processors[mod])
+        orig_ctx = context.copy()
         for func in funcs:
             context.update(func())
+        # make sure the original values win.  This makes it possible to
+        # easier add new variables in context processors without breaking
+        # existing views.
+        context.update(orig_ctx)
 
     def run(self, host='127.0.0.1', port=5000, **options):
         """Runs the application on a local development server.  If the
