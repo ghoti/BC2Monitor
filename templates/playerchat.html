@@ -1,11 +1,47 @@
-<html>
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+"http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+
+<head>
+  	<title>=JHF= Chat & Player Search</title>
+	<style type="text/css">
+			#container {	padding: 15px;
+			width: 940px;
+			margin: auto;
+			border: 1px solid black;
+			}
+			
+			h3 { margin-bottom: 15px; }
+	
+</style>
+											
+</head>
+
 <body>
+
+<div id="container">
+
+<!-- HEADER & Navigation -->
+<div id="banner">
+	<a href="http://www.jhfgames.com/"><img src="http://www.jhfgames.com/images/titlebanner2.jpg" width="930" height="120" alt="title banner" /></a>
+</div>
+
+<div id="player_chat">
+
+<h3><a href="http://www.jhfgames.com/playersearch/search.html">Search again</a></h3>
+
 {% if player %}
     {% for line in player %}
-        {{line}}<br>
+        {{line}}<br/>
     {% endfor %}
 {% else %}
     There was no chat found... :(
 {% endif %}
+
+<h3><a href="http://www.jhfgames.com/playersearch/search.html">Search again</a></h3>
+
+</div>
+
 </body>
 </html>
