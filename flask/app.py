@@ -23,7 +23,7 @@ from werkzeug.routing import Map, Rule
 from werkzeug.exceptions import HTTPException, InternalServerError, NotFound
 
 from .helpers import _PackageBoundObject, url_for, get_flashed_messages, \
-    _tojson_filter
+    _tojson_filter, _endpoint_from_view_func
 from .wrappers import Request, Response
 from .config import ConfigAttribute, Config
 from .ctx import _RequestContext
@@ -32,6 +32,7 @@ from .session import Session, _NullSession
 from .module import _ModuleSetupState
 from .templating import _DispatchingJinjaLoader, \
     _default_template_ctx_processor
+from .signals import request_started, request_finished, got_request_exception
 
 # a lock used for logger initialization
 _logger_lock = Lock()
@@ -310,7 +311,7 @@ class Flask(_PackageBoundObject):
 
     def create_jinja_environment(self):
         """Creates the Jinja2 environment based on :attr:`jinja_options`
-        and :meth:`create_jinja_loader`.
+        and :meth:`select_jinja_autoescape`.
 
         .. versionadded:: 0.5
         """
@@ -369,6 +370,11 @@ class Flask(_PackageBoundObject):
         """Runs the application on a local development server.  If the
         :attr:`debug` flag is set the server will automatically reload
         for code changes and show a debugger in case an exception happened.
+
+        If you want to run the application in debug mode, but disable the
+        code execution on the interactive debugger, you can pass
+        ``use_evalex=False`` as parameter.  This will keep the debugger's
+        traceback screen active, but disable code execution.
 
         .. admonition:: Keep in Mind
 
@@ -496,9 +502,7 @@ class Flask(_PackageBoundObject):
                         added and handled by the standard request handling.
         """
         if endpoint is None:
-            assert view_func is not None, 'expected view func if endpoint ' \
-                                          'is not provided.'
-            endpoint = view_func.__name__
+            endpoint = _endpoint_from_view_func(view_func)
         options['endpoint'] = endpoint
         methods = options.pop('methods', ('GET',))
         provide_automatic_options = False
@@ -659,6 +663,7 @@ class Flask(_PackageBoundObject):
 
         .. versionadded: 0.3
         """
+        got_request_exception.send(self, exception=e)
         handler = self.error_handlers.get(500)
         if self.debug:
             raise
@@ -724,6 +729,16 @@ class Flask(_PackageBoundObject):
             return self.response_class(*rv)
         return self.response_class.force_type(rv, request.environ)
 
+    def create_url_adapter(self, request):
+        """Creates a URL adapter for the given request.  The URL adapter
+        is created at a point where the request context is not yet set up
+        so the request is passed explicitly.
+
+        .. versionadded:: 0.6
+        """
+        return self.url_map.bind_to_environ(request.environ,
+            server_name=self.config['SERVER_NAME'])
+
     def preprocess_request(self):
         """Called before the actual request dispatching and will
         call every as :meth:`before_request` decorated function.
@@ -765,45 +780,6 @@ class Flask(_PackageBoundObject):
         for handler in funcs:
             response = handler(response)
         return response
-
-    def wsgi_app(self, environ, start_response):
-        """The actual WSGI application.  This is not implemented in
-        `__call__` so that middlewares can be applied without losing a
-        reference to the class.  So instead of doing this::
-
-            app = MyMiddleware(app)
-
-        It's a better idea to do this instead::
-
-            app.wsgi_app = MyMiddleware(app.wsgi_app)
-
-        Then you still have the original application object around and
-        can continue to call methods on it.
-
-        .. versionchanged:: 0.4
-           The :meth:`after_request` functions are now called even if an
-           error handler took over request processing.  This ensures that
-           even if an exception happens database have the chance to
-           properly close the connection.
-
-        :param environ: a WSGI environment
-        :param start_response: a callable accepting a status code,
-                               a list of headers and an optional
-                               exception context to start the response
-        """
-        with self.request_context(environ):
-            try:
-                rv = self.preprocess_request()
-                if rv is None:
-                    rv = self.dispatch_request()
-                response = self.make_response(rv)
-            except Exception, e:
-                response = self.make_response(self.handle_exception(e))
-            try:
-                response = self.process_response(response)
-            except Exception, e:
-                response = self.make_response(self.handle_exception(e))
-            return response(environ, start_response)
 
     def request_context(self, environ):
         """Creates a request context from the given environment and binds
@@ -851,6 +827,47 @@ class Flask(_PackageBoundObject):
         """
         from werkzeug import create_environ
         return self.request_context(create_environ(*args, **kwargs))
+
+    def wsgi_app(self, environ, start_response):
+        """The actual WSGI application.  This is not implemented in
+        `__call__` so that middlewares can be applied without losing a
+        reference to the class.  So instead of doing this::
+
+            app = MyMiddleware(app)
+
+        It's a better idea to do this instead::
+
+            app.wsgi_app = MyMiddleware(app.wsgi_app)
+
+        Then you still have the original application object around and
+        can continue to call methods on it.
+
+        .. versionchanged:: 0.4
+           The :meth:`after_request` functions are now called even if an
+           error handler took over request processing.  This ensures that
+           even if an exception happens database have the chance to
+           properly close the connection.
+
+        :param environ: a WSGI environment
+        :param start_response: a callable accepting a status code,
+                               a list of headers and an optional
+                               exception context to start the response
+        """
+        with self.request_context(environ):
+            try:
+                request_started.send(self)
+                rv = self.preprocess_request()
+                if rv is None:
+                    rv = self.dispatch_request()
+                response = self.make_response(rv)
+            except Exception, e:
+                response = self.make_response(self.handle_exception(e))
+            try:
+                response = self.process_response(response)
+            except Exception, e:
+                response = self.make_response(self.handle_exception(e))
+            request_finished.send(self, response=response)
+            return response(environ, start_response)
 
     def __call__(self, environ, start_response):
         """Shortcut for :attr:`wsgi_app`."""

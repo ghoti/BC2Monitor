@@ -59,6 +59,15 @@ else:
     _tojson_filter = json.dumps
 
 
+def _endpoint_from_view_func(view_func):
+    """Internal helper that returns the default endpoint for a given
+    function.  This always is the function name.
+    """
+    assert view_func is not None, 'expected view func if endpoint ' \
+                                  'is not provided.'
+    return view_func.__name__
+
+
 def jsonify(*args, **kwargs):
     """Creates a :class:`~flask.Response` with the JSON representation of
     the given arguments with an `application/json` mimetype.  The arguments
@@ -90,6 +99,48 @@ def jsonify(*args, **kwargs):
         _assert_have_json()
     return current_app.response_class(json.dumps(dict(*args, **kwargs),
         indent=None if request.is_xhr else 2), mimetype='application/json')
+
+
+def make_response(*args):
+    """Sometimes it is necessary to set additional headers in a view.  Because
+    views do not have to return response objects but can return a value that
+    is converted into a response object by Flask itself, it becomes tricky to
+    add headers to it.  This function can be called instead of using a return
+    and you will get a response object which you can use to attach headers.
+
+    If view looked like this and you want to add a new header::
+
+        def index():
+            return render_template('index.html', foo=42)
+
+    You can now do something like this::
+
+        def index():
+            response = make_response(render_template('index.html', foo=42))
+            response.headers['X-Parachutes'] = 'parachutes are cool'
+            return response
+
+    This function accepts the very same arguments you can return from a
+    view function.  This for example creates a response with a 404 error
+    code::
+
+        response = make_response(render_template('not_found.html'), 404)
+
+    Internally this function does the following things:
+
+    -   if no arguments are passed, it creates a new response argument
+    -   if one argument is passed, :meth:`flask.Flask.make_response`
+        is invoked with it.
+    -   if more than one argument is passed, the arguments are passed
+        to the :meth:`flask.Flask.make_response` function as tuple.
+
+    .. versionadded:: 0.6
+    """
+    if not args:
+        return current_app.response_class()
+    if len(args) == 1:
+        args = args[0]
+    return current_app.make_response(args)
 
 
 def url_for(endpoint, **values):
