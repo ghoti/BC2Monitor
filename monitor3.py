@@ -270,7 +270,7 @@ class monitor3(object):
     
     def PlayerKicked(self, data):
         self.chat_queue('%s - %s' % (data[0], data[1]))
-        self.logger.info(data[0], data[1])
+        self.logger.info('%s - %s' %(data[0], data[1]))
         self.rc.sndcmd(self.rc.SAY, '\'%s-%s\' all' % (data[0], data[1]))
         
     def PlayerLeave(self, data):
