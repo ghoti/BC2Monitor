@@ -802,7 +802,7 @@ class monitor3(object):
         #<current gamemode: string> <current map: string> 
         #<roundsPlayed: integer> <roundsTotal: string> <scores: team scores> 
         data, response = rc.sndcmd(rc.SINFO)
-        if response and len(data) == 12:
+        if response and len(data) == 13:
             self.pcount = int(data[2])
             self.map = data[5].strip('Levels/')
             self.round[0] = data[6]
