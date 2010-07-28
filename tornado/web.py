@@ -43,9 +43,12 @@ See the Tornado walkthrough on GitHub for more details and a good
 getting started guide.
 """
 
+from __future__ import with_statement
+
 import base64
 import binascii
 import calendar
+import contextlib
 import Cookie
 import cStringIO
 import datetime
@@ -61,6 +64,7 @@ import logging
 import mimetypes
 import os.path
 import re
+import stack_context
 import stat
 import sys
 import template
@@ -79,13 +83,13 @@ class RequestHandler(object):
     """
     SUPPORTED_METHODS = ("GET", "HEAD", "POST", "DELETE", "PUT")
 
-    def __init__(self, application, request, transforms=None):
+    def __init__(self, application, request, **kwargs):
         self.application = application
         self.request = request
         self._headers_written = False
         self._finished = False
         self._auto_finish = True
-        self._transforms = transforms or []
+        self._transforms = None  # will be set in _execute
         self.ui = _O((n, self._ui_method(m)) for n, m in
                      application.ui_methods.iteritems())
         self.ui["modules"] = _O((n, self._ui_module(n, m)) for n, m in
@@ -95,6 +99,27 @@ class RequestHandler(object):
         if hasattr(self.request, "connection"):
             self.request.connection.stream.set_close_callback(
                 self.on_connection_close)
+        self.initialize(**kwargs)
+
+    def initialize(self):
+        """Hook for subclass initialization.
+
+        A dictionary passed as the third argument of a url spec will be
+        supplied as keyword arguments to initialize().
+
+        Example:
+            class ProfileHandler(RequestHandler):
+                def initialize(self, database):
+                    self.database = database
+
+                def get(self, username):
+                    ...
+
+            app = Application([
+                (r'/user/(.*)', ProfileHandler, dict(database=database)),
+                ])
+        """
+        pass
 
     @property
     def settings(self):
@@ -754,10 +779,17 @@ class RequestHandler(object):
     def reverse_url(self, name, *args):
         return self.application.reverse_url(name, *args)
 
+    @contextlib.contextmanager
+    def _stack_context(self):
+        try:
+            yield
+        except Exception, e:
+            self._handle_request_exception(e)
+
     def _execute(self, transforms, *args, **kwargs):
         """Executes this request with the given output transforms."""
         self._transforms = transforms
-        try:
+        with stack_context.StackContext(self._stack_context):
             if self.request.method not in self.SUPPORTED_METHODS:
                 raise HTTPError(405)
             # If XSRF cookies are turned on, reject form submissions without
@@ -770,8 +802,6 @@ class RequestHandler(object):
                 getattr(self, self.request.method.lower())(*args, **kwargs)
                 if self._auto_finish and not self._finished:
                     self.finish()
-        except Exception, e:
-            self._handle_request_exception(e)
 
     def _generate_headers(self):
         lines = [self.request.version + " " + str(self._status_code) + " " +
