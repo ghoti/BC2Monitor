@@ -33,7 +33,7 @@ except ImportError:
             json_available = False
 
 
-from werkzeug import Headers, wrap_file, is_resource_modified, cached_property
+from werkzeug import Headers, wrap_file, cached_property
 from werkzeug.exceptions import NotFound
 
 from jinja2 import FileSystemLoader
@@ -146,7 +146,7 @@ def url_for(endpoint, **values):
     """Generates a URL to the given endpoint with the method provided.
     The endpoint is relative to the active module if modules are in use.
 
-    Here some examples:
+    Here are some examples:
 
     ==================== ======================= =============================
     Active Module        Target Endpoint         Target Function
