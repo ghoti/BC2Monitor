@@ -45,34 +45,35 @@ getting started guide.
 
 from __future__ import with_statement
 
+import Cookie
 import base64
 import binascii
+import cStringIO
 import calendar
 import contextlib
-import Cookie
-import cStringIO
 import datetime
 import email.utils
-import escape
 import functools
 import gzip
 import hashlib
 import hmac
 import httplib
-import locale
 import logging
 import mimetypes
 import os.path
 import re
-import stack_context
 import stat
 import sys
-import template
 import time
 import types
 import urllib
 import urlparse
 import uuid
+
+from tornado import escape
+from tornado import locale
+from tornado import stack_context
+from tornado import template
 
 class RequestHandler(object):
     """Subclass this class and define get() or post() to make a handler.
@@ -488,7 +489,7 @@ class RequestHandler(object):
         return t.generate(**args)
 
     def flush(self, include_footers=False):
-        """Flushes the current output buffer to the nextwork."""
+        """Flushes the current output buffer to the network."""
         if self.application._wsgi:
             raise Exception("WSGI applications do not support flush()")
 
@@ -1371,7 +1372,12 @@ def authenticated(method):
             if self.request.method == "GET":
                 url = self.get_login_url()
                 if "?" not in url:
-                    url += "?" + urllib.urlencode(dict(next=self.request.uri))
+                    if urlparse.urlsplit(url).scheme:
+                        # if login url is absolute, make next absolute too
+                        next_url = self.request.full_url()
+                    else:
+                        next_url = self.request.uri
+                    url += "?" + urllib.urlencode(dict(next=next_url))
                 self.redirect(url)
                 return
             raise HTTPError(403)

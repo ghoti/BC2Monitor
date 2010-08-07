@@ -18,21 +18,22 @@
 
 from __future__ import with_statement
 
+import cStringIO
 import calendar
 import collections
-import cStringIO
 import email.utils
 import errno
-import escape
 import httplib
-import httputil
-import ioloop
 import logging
 import pycurl
-import stack_context
 import sys
 import time
 import weakref
+
+from tornado import escape
+from tornado import httputil
+from tornado import ioloop
+from tornado import stack_context
 
 class HTTPClient(object):
     """A blocking HTTP client backed with pycurl.
@@ -129,6 +130,27 @@ class AsyncHTTPClient(object):
             instance._fds = {}
             instance._timeout = None
             cls._ASYNC_CLIENTS[io_loop] = instance
+
+            try:
+                instance._socket_action = instance._multi.socket_action
+            except AttributeError:
+                # socket_action is found in pycurl since 7.18.2 (it's been
+                # in libcurl longer than that but wasn't accessible to
+                # python).
+                logging.warning("socket_action method missing from pycurl; "
+                                "falling back to socket_all. Upgrading "
+                                "libcurl and pycurl will improve performance")
+                instance._socket_action = \
+                    lambda fd, action: instance._multi.socket_all()
+
+            # libcurl has bugs that sometimes cause it to not report all
+            # relevant file descriptors and timeouts to TIMERFUNCTION/
+            # SOCKETFUNCTION.  Mitigate the effects of such bugs by
+            # forcing a periodic scan of all active requests.
+            instance._force_timeout_callback = ioloop.PeriodicCallback(
+                instance._multi.socket_all, 1000, io_loop=io_loop)
+            instance._force_timeout_callback.start()
+
             return instance
 
     def close(self):
@@ -138,6 +160,7 @@ class AsyncHTTPClient(object):
         on the AsyncHTTPClient after close().
         """
         del AsyncHTTPClient._ASYNC_CLIENTS[self.io_loop]
+        self._force_timeout_callback.stop()
         for curl in self._curls:
             curl.close()
         self._multi.close()
@@ -196,8 +219,8 @@ class AsyncHTTPClient(object):
         if events & ioloop.IOLoop.WRITE: action |= pycurl.CSELECT_OUT
         while True:
             try:
-                ret, num_handles = self._multi.socket_action(fd, action)
-            except Exception, e:
+                ret, num_handles = self._socket_action(fd, action)
+            except pycurl.error, e:
                 ret = e[0]
             if ret != pycurl.E_CALL_MULTI_PERFORM:
                 break
@@ -209,9 +232,9 @@ class AsyncHTTPClient(object):
             self._timeout = None
             while True:
                 try:
-                    ret, num_handles = self._multi.socket_action(
-                                            pycurl.SOCKET_TIMEOUT, 0)
-                except Exception, e:
+                    ret, num_handles = self._socket_action(
+                        pycurl.SOCKET_TIMEOUT, 0)
+                except pycurl.error, e:
                     ret = e[0]
                 if ret != pycurl.E_CALL_MULTI_PERFORM:
                     break
@@ -261,7 +284,7 @@ class AsyncHTTPClient(object):
                         "buffer": cStringIO.StringIO(),
                         "request": request,
                         "callback": callback,
-                        "start_time": time.time(),
+                        "curl_start_time": time.time(),
                     }
                     # Disable IPv6 to mitigate the effects of this bug
                     # on curl versions <= 7.21.0
@@ -292,11 +315,23 @@ class AsyncHTTPClient(object):
             code = curl.getinfo(pycurl.HTTP_CODE)
             effective_url = curl.getinfo(pycurl.EFFECTIVE_URL)
             buffer.seek(0)
+        # the various curl timings are documented at
+        # http://curl.haxx.se/libcurl/c/curl_easy_getinfo.html
+        time_info = dict(
+            queue=info["curl_start_time"] - info["request"].start_time,
+            namelookup=curl.getinfo(pycurl.NAMELOOKUP_TIME),
+            connect=curl.getinfo(pycurl.CONNECT_TIME),
+            pretransfer=curl.getinfo(pycurl.PRETRANSFER_TIME),
+            starttransfer=curl.getinfo(pycurl.STARTTRANSFER_TIME),
+            total=curl.getinfo(pycurl.TOTAL_TIME),
+            redirect=curl.getinfo(pycurl.REDIRECT_TIME),
+            )
         try:
             info["callback"](HTTPResponse(
                 request=info["request"], code=code, headers=info["headers"],
                 buffer=buffer, effective_url=effective_url, error=error,
-                request_time=time.time() - info["start_time"]))
+                request_time=time.time() - info["curl_start_time"],
+                time_info=time_info))
         except (KeyboardInterrupt, SystemExit):
             raise
         except:
@@ -325,6 +360,16 @@ class HTTPRequest(object):
                 timestamp, localtime=False, usegmt=True)
         if "Pragma" not in headers:
             headers["Pragma"] = ""
+        # libcurl's magic "Expect: 100-continue" behavior causes delays
+        # with servers that don't support it (which include, among others,
+        # Google's OpenID endpoint).  Additionally, this behavior has
+        # a bug in conjunction with the curl_multi_socket_action API
+        # (https://sourceforge.net/tracker/?func=detail&atid=100976&aid=3039744&group_id=976),
+        # which increases the delays.  It's more trouble than it's worth,
+        # so just turn off the feature (yes, setting Expect: to an empty
+        # value is the official way to disable this)
+        if "Expect" not in headers:
+            headers["Expect"] = ""
         self.url = _utf8(url)
         self.method = method
         self.headers = headers
@@ -342,11 +387,29 @@ class HTTPRequest(object):
         self.header_callback = header_callback
         self.prepare_curl_callback = prepare_curl_callback
         self.allow_nonstandard_methods = allow_nonstandard_methods
+        self.start_time = time.time()
 
 
 class HTTPResponse(object):
-    def __init__(self, request, code, headers={}, buffer=None, effective_url=None,
-                 error=None, request_time=None):
+    """HTTP Response object.
+
+    Attributes:
+    * request: HTTPRequest object
+    * code: numeric HTTP status code, e.g. 200 or 404
+    * headers: httputil.HTTPHeaders object
+    * buffer: cStringIO object for response body
+    * body: respose body as string (created on demand from self.buffer)
+    * error: Exception object, if any
+    * request_time: seconds from request start to finish
+    * time_info: dictionary of diagnostic timing information from the request.
+        Available data are subject to change, but currently uses timings
+        available from http://curl.haxx.se/libcurl/c/curl_easy_getinfo.html,
+        plus 'queue', which is the delay (if any) introduced by waiting for
+        a slot under AsyncHTTPClient's max_clients setting.
+    """
+    def __init__(self, request, code, headers={}, buffer=None,
+                 effective_url=None, error=None, request_time=None,
+                 time_info={}):
         self.request = request
         self.code = code
         self.headers = headers
@@ -364,6 +427,7 @@ class HTTPResponse(object):
         else:
             self.error = error
         self.request_time = request_time
+        self.time_info = time_info
 
     def _get_body(self):
         if self.buffer is None:
