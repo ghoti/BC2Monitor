@@ -62,7 +62,7 @@ class HTTPClient(object):
         If an error occurs during the fetch, we raise an HTTPError.
         """
         if not isinstance(request, HTTPRequest):
-           request = HTTPRequest(url=request, **kwargs)
+            request = HTTPRequest(url=request, **kwargs)
         buffer = cStringIO.StringIO()
         headers = httputil.HTTPHeaders()
         try:
@@ -148,7 +148,7 @@ class AsyncHTTPClient(object):
             # SOCKETFUNCTION.  Mitigate the effects of such bugs by
             # forcing a periodic scan of all active requests.
             instance._force_timeout_callback = ioloop.PeriodicCallback(
-                instance._multi.socket_all, 1000, io_loop=io_loop)
+                instance._handle_force_timeout, 1000, io_loop=io_loop)
             instance._force_timeout_callback.start()
 
             return instance
@@ -175,7 +175,7 @@ class AsyncHTTPClient(object):
         throw the exception (if any) in the callback.
         """
         if not isinstance(request, HTTPRequest):
-           request = HTTPRequest(url=request, **kwargs)
+            request = HTTPRequest(url=request, **kwargs)
         self._requests.append((request, stack_context.wrap(callback)))
         self._process_queue()
         self._set_timeout(0)
@@ -256,6 +256,20 @@ class AsyncHTTPClient(object):
         new_timeout = self._multi.timeout()
         if new_timeout != -1:
             self._set_timeout(new_timeout)
+
+    def _handle_force_timeout(self):
+        """Called by IOLoop periodically to ask libcurl to process any
+        events it may have forgotten about.
+        """
+        with stack_context.NullContext():
+            while True:
+                try:
+                    ret, num_handles = self._multi.socket_all()
+                except pycurl.error, e:
+                    ret = e[0]
+                if ret != pycurl.E_CALL_MULTI_PERFORM:
+                    break
+            self._finish_pending_requests()
 
     def _finish_pending_requests(self):
         """Process any requests that were completed by the last
@@ -351,7 +365,8 @@ class HTTPRequest(object):
                  max_redirects=5, user_agent=None, use_gzip=True,
                  network_interface=None, streaming_callback=None,
                  header_callback=None, prepare_curl_callback=None,
-                 allow_nonstandard_methods=False):
+                 proxy_host=None, proxy_port=None, proxy_username=None,
+                 proxy_password='', allow_nonstandard_methods=False):
         if headers is None:
             headers = httputil.HTTPHeaders()
         if if_modified_since:
@@ -360,6 +375,12 @@ class HTTPRequest(object):
                 timestamp, localtime=False, usegmt=True)
         if "Pragma" not in headers:
             headers["Pragma"] = ""
+        # Proxy support: proxy_host and proxy_port must be set to connect via
+        # proxy.  The username and password credentials are optional.
+        self.proxy_host = proxy_host
+        self.proxy_port = proxy_port
+        self.proxy_username = proxy_username
+        self.proxy_password = proxy_password
         # libcurl's magic "Expect: 100-continue" behavior causes delays
         # with servers that don't support it (which include, among others,
         # Google's OpenID endpoint).  Additionally, this behavior has
@@ -490,8 +511,8 @@ def _curl_setup_request(curl, request, buffer, headers):
     curl.setopt(pycurl.URL, request.url)
     # Request headers may be either a regular dict or HTTPHeaders object
     if isinstance(request.headers, httputil.HTTPHeaders):
-      curl.setopt(pycurl.HTTPHEADER,
-                  [_utf8("%s: %s" % i) for i in request.headers.get_all()])
+        curl.setopt(pycurl.HTTPHEADER,
+                    [_utf8("%s: %s" % i) for i in request.headers.get_all()])
     else:
         curl.setopt(pycurl.HTTPHEADER,
                     [_utf8("%s: %s" % i) for i in request.headers.iteritems()])
@@ -518,6 +539,13 @@ def _curl_setup_request(curl, request, buffer, headers):
         curl.setopt(pycurl.ENCODING, "gzip,deflate")
     else:
         curl.setopt(pycurl.ENCODING, "none")
+    if request.proxy_host and request.proxy_port:
+        curl.setopt(pycurl.PROXY, request.proxy_host)
+        curl.setopt(pycurl.PROXYPORT, request.proxy_port)
+        if request.proxy_username:
+            credentials = '%s:%s' % (request.proxy_username, 
+                    request.proxy_password)
+            curl.setopt(pycurl.PROXYUSERPWD, credentials)
 
     # Set the request method through curl's retarded interface which makes
     # up names for almost every single method
@@ -565,10 +593,12 @@ def _curl_setup_request(curl, request, buffer, headers):
 
 
 def _curl_header_callback(headers, header_line):
+    # header_line as returned by curl includes the end-of-line characters.
+    header_line = header_line.strip()
     if header_line.startswith("HTTP/"):
         headers.clear()
         return
-    if header_line == "\r\n":
+    if not header_line:
         return
     headers.parse_line(header_line)
 
@@ -590,3 +620,27 @@ def _utf8(value):
         return value.encode("utf-8")
     assert isinstance(value, str)
     return value
+
+def main():
+    from tornado.options import define, options, parse_command_line
+    define("print_headers", type=bool, default=False)
+    define("print_body", type=bool, default=True)
+    define("follow_redirects", type=bool, default=True)
+    args = parse_command_line()
+    client = HTTPClient()
+    for arg in args:
+        try:
+            response = client.fetch(arg,
+                                    follow_redirects=options.follow_redirects)
+        except HTTPError, e:
+            if e.response is not None:
+                response = e.response
+            else:
+                raise
+        if options.print_headers:
+            print response.headers
+        if options.print_body:
+            print response.body
+
+if __name__ == "__main__":
+    main()

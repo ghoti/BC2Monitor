@@ -160,6 +160,11 @@ class RequestHandler(object):
         you try (and fail) to produce some output.  The epoll- and kqueue-
         based implementations should detect closed connections even while
         the request is idle.
+
+        Proxies may keep a connection open for a time (perhaps
+        indefinitely) after the client has gone away, so this method
+        may not be called promptly after the end user closes their
+        connection.
         """
         pass
 
@@ -339,6 +344,16 @@ class RequestHandler(object):
         if timestamp < time.time() - 31 * 86400:
             logging.warning("Expired cookie %r", value)
             return None
+        if timestamp > time.time() + 31 * 86400:
+            # _cookie_signature does not hash a delimiter between the
+            # parts of the cookie, so an attacker could transfer trailing
+            # digits from the payload to the timestamp without altering the
+            # signature.  For backwards compatibility, sanity-check timestamp
+            # here instead of modifying _cookie_signature.
+            logging.warning("Cookie timestamp in future; possible tampering %r", value)
+            return None
+        if parts[1].startswith("0"):
+            logging.warning("Tampered cookie %r", value)
         try:
             return base64.b64decode(parts[0])
         except:
@@ -1114,8 +1129,8 @@ class Application(object):
         # request so you don't need to restart to see changes
         if self.settings.get("debug"):
             if getattr(RequestHandler, "_templates", None):
-              map(lambda loader: loader.reset(),
-                  RequestHandler._templates.values())
+                map(lambda loader: loader.reset(),
+                    RequestHandler._templates.values())
             RequestHandler._static_hashes = {}
 
         handler._execute(transforms, *args, **kwargs)
@@ -1245,8 +1260,8 @@ class StaticFileHandler(RequestHandler):
             file.close()
 
     def set_extra_headers(self, path):
-      """For subclass to add extra headers to the response"""
-      pass
+        """For subclass to add extra headers to the response"""
+        pass
 
 
 class FallbackHandler(RequestHandler):
