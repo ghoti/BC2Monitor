@@ -19,8 +19,8 @@ class player(object):
         ADMINS = {'-gH0Ti-':self.SUPER, 'H0FFA':self.SUPER, 'JimmyT13':self.SUPER, 'Madindian':self.SUPER,
                 'HaveSocks':self.SUPER, '|-Smoke-|':self.SUPER, 'Astromarmot':self.SUPER, 'l3ONE':self.SUPER,
                 'OBMer':self.SUPER,'Gwawk':self.SUPER, 'phyZilla':self.SUPER, 'Fralix':self.SUPER, 'Luxxord':self.ADMIN,
-                'ch3w3mup':self.RECRUIT, 'jhfveritas':self.SUPER, 'Uncle Paul':self.RECRUIT, 'LostSoul1904':self.RECRUIT,
-                'Atament':self.RECRUIT}
+                'ch3w3mup':self.RECRUIT, 'jhfveritas':self.SUPER, 'Uncle Paul':self.Admin, 'LostSoul1904':self.RECRUIT,
+                'Atament':self.RECRUIT, 'WarriorPiper':self.RECRUIT}
         if name.count("'"):
             self.name = name.replace("'", '')
         elif name.count('"'):
