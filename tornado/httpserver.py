@@ -116,10 +116,10 @@ class HTTPServer(object):
 
         http_server = httpserver.HTTPServer(handle_request)
         http_server.bind(8888)
-        http_server.start() # Forks multiple sub-processes
+        http_server.start(0) # Forks multiple sub-processes
         ioloop.IOLoop.instance().start()
 
-    start() detects the number of CPUs on this machine and "pre-forks" that
+    start(0) detects the number of CPUs on this machine and "pre-forks" that
     number of child processes so that we have one Tornado process per CPU,
     all with their own IOLoop. You can also pass in the specific number of
     child processes you want to run with if you want to override this
@@ -184,6 +184,11 @@ class HTTPServer(object):
 
         Since we use processes and not threads, there is no shared memory
         between any server code.
+
+        Note that multiple processes are not compatible with the autoreload
+        module (or the debug=True option to tornado.web.Application).
+        When using multiple processes, no IOLoops can be created or
+        referenced until after the call to HTTPServer.start(n).
         """
         assert not self._started
         self._started = True
@@ -225,10 +230,26 @@ class HTTPServer(object):
                 raise
             if self.ssl_options is not None:
                 assert ssl, "Python 2.6+ and OpenSSL required for SSL"
-                connection = ssl.wrap_socket(
-                    connection, server_side=True, **self.ssl_options)
+                try:
+                    connection = ssl.wrap_socket(connection,
+                                                 server_side=True,
+                                                 do_handshake_on_connect=False,
+                                                 **self.ssl_options)
+                except ssl.SSLError, err:
+                    if err.args[0] == ssl.SSL_ERROR_EOF:
+                        return connection.close()
+                    else:
+                        raise
+                except socket.error, err:
+                    if err.args[0] == errno.ECONNABORTED:
+                        return connection.close()
+                    else:
+                        raise
             try:
-                stream = iostream.IOStream(connection, io_loop=self.io_loop)
+                if self.ssl_options is not None:
+                    stream = iostream.SSLIOStream(connection, io_loop=self.io_loop)
+                else:
+                    stream = iostream.IOStream(connection, io_loop=self.io_loop)
                 HTTPConnection(stream, address, self.request_callback,
                                self.no_keep_alive, self.xheaders)
             except:
